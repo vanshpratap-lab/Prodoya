@@ -63,18 +63,84 @@ export default function About({ setCurrentPage }) {
 
   return (
     <div className="about-page animate-fade-in-up">
-      {/* About Hero */}
-      <section className="about-hero-section section-light">
+      {/* About Hero / Why Us Stats */}
+      <section className="why-us-section" style={{ paddingTop: '140px' }}>
         <div className="container">
-          <div className="hero-content">
-            <span className="tag-badge light">ABOUT MARKZAP</span>
-            <h1 className="about-hero-title">
-              Designing Growth, <br />
-              <span className="text-highlight">Not Just Deliverables</span>
-            </h1>
-            <p className="hero-subtitle">
-              We're a premium growth ecosystem that bridges design, technology, and strategy to build businesses that scale.
+          <div className="section-header text-center">
+            <h2 className="section-title-large uppercase-title" style={{ fontSize: '42px', fontWeight: '900', letterSpacing: '1px', marginBottom: '16px' }}>WHY US</h2>
+            <p className="section-desc-large" style={{ margin: '0 auto 60px', maxWidth: '640px', color: '#64748b', fontSize: '15px' }}>
+              Passionate app developers dedicated to empowering businesses with innovative tech.
             </p>
+          </div>
+
+          <div className="why-us-grid">
+            {/* Card 1 — Projects Completed */}
+            <div className="why-us-card bg-white-card">
+              <div className="why-us-card-left">
+                <div className="why-us-icon-wrapper">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </div>
+                <span className="why-us-card-label">Projects Completed</span>
+              </div>
+              <div className="why-us-card-right">
+                <span className="why-us-card-number">50+</span>
+              </div>
+            </div>
+
+            {/* Card 2 — Followers */}
+            <div className="why-us-card bg-white-card">
+              <div className="why-us-card-left">
+                <div className="why-us-icon-wrapper">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                  </svg>
+                </div>
+                <span className="why-us-card-label">Followers across all channels</span>
+              </div>
+              <div className="why-us-card-right">
+                <span className="why-us-card-number">250K+</span>
+              </div>
+            </div>
+
+            {/* Card 3 — Happy Clients */}
+            <div className="why-us-card bg-white-card">
+              <div className="why-us-card-left">
+                <div className="why-us-icon-wrapper">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+                    <line x1="9" y1="9" x2="9.01" y2="9"></line>
+                    <line x1="15" y1="9" x2="15.01" y2="9"></line>
+                  </svg>
+                </div>
+                <span className="why-us-card-label">Happy Clients</span>
+              </div>
+              <div className="why-us-card-right">
+                <span className="why-us-card-number">30+</span>
+              </div>
+            </div>
+
+            {/* Card 4 — Years of Experience */}
+            <div className="why-us-card bg-white-card">
+              <div className="why-us-card-left">
+                <div className="why-us-icon-wrapper">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A5 5 0 0 0 8 8c0 1 .3 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"></path>
+                    <line x1="9" y1="18" x2="15" y2="18"></line>
+                    <line x1="10" y1="22" x2="14" y2="22"></line>
+                  </svg>
+                </div>
+                <span className="why-us-card-label">Years of Experience</span>
+              </div>
+              <div className="why-us-card-right">
+                <span className="why-us-card-number">4+</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -241,18 +307,93 @@ export default function About({ setCurrentPage }) {
       </section>
 
       <style>{`
-        .about-hero-section {
-          padding-top: 160px;
-          min-height: 500px;
+        .why-us-section {
+          background-color: #ffffff;
+          padding: 80px 0;
+        }
+        .why-us-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 32px;
+          max-width: 1000px;
+          margin: 0 auto;
+        }
+        .why-us-card {
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          border-radius: 16px;
+          display: flex;
+          overflow: hidden;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+          transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+          height: 140px;
+        }
+        .why-us-card:hover {
+          transform: translateY(-5px);
+          box-shadow: 0 16px 36px rgba(0, 0, 0, 0.06);
+          border-color: #cbd5e1;
+        }
+        .why-us-card-left {
+          flex: 1.3;
+          padding: 24px;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          align-items: flex-start;
+        }
+        .why-us-icon-wrapper {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: rgba(59, 102, 245, 0.08);
+          color: #3b66f5;
           display: flex;
           align-items: center;
+          justify-content: center;
+        }
+        .why-us-card-label {
+          font-family: var(--font-sans);
+          font-size: 13px;
+          font-weight: 700;
+          color: var(--color-text-dark-blue);
+        }
+        .why-us-card-right {
+          flex: 1;
+          background-color: #f8fafc;
+          border-left: 1px dashed #e2e8f0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          background-image: linear-gradient(90deg, rgba(16, 24, 32, 0.03) 1px, transparent 1px);
+          background-size: 8px 100%;
+        }
+        .why-us-card-number {
+          font-family: var(--font-sans);
+          font-size: 44px;
+          font-weight: 900;
+          color: #3b66f5;
+          letter-spacing: -1.5px;
         }
 
-        .about-hero-title {
-          font-size: 72px;
-          line-height: 1.1;
-          letter-spacing: -2px;
-          margin-bottom: 24px;
+        @media (max-width: 900px) {
+          .why-us-grid {
+            grid-template-columns: 1fr 1fr;
+          }
+        }
+
+        @media (max-width: 600px) {
+          .why-us-grid {
+            grid-template-columns: 1fr;
+            max-width: 440px;
+            margin: 0 auto;
+          }
+          .why-us-card {
+            height: 120px;
+          }
+          .why-us-card-number {
+            font-size: 34px;
+          }
         }
 
         /* Timeline Styles */
