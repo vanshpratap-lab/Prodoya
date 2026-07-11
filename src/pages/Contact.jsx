@@ -142,6 +142,7 @@ export default function Contact() {
         }
 
         .contact-title-main {
+          font-family: var(--font-sans), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
           font-size: 46px;
           font-weight: 900;
           color: #0f172a;
@@ -179,6 +180,7 @@ export default function Contact() {
         }
 
         .contact-heading-left {
+          font-family: var(--font-sans), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
           font-size: 40px;
           font-weight: 900;
           color: #0f172a;
@@ -276,6 +278,7 @@ export default function Contact() {
         }
 
         .contact-card-title {
+          font-family: var(--font-sans), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
           font-size: 26px;
           font-weight: 900;
           color: #0f172a;
