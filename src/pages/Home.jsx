@@ -565,9 +565,6 @@ export default function Home({ setCurrentPage }) {
                 YOUR IDEA INTO <br />
                 REALITY
               </div>
-              <div className="cta-card-link-new">
-                Start Your Project <span className="arrow">→</span>
-              </div>
             </div>
           </div>
         </div>
@@ -1676,8 +1673,9 @@ export default function Home({ setCurrentPage }) {
           position: relative;
         }
         .process-card-visual-box img {
-          max-width: 90%;
-          max-height: 90%;
+          width: 100%;
+          height: 100%;
+          padding: 4px;
           object-fit: contain;
           transition: transform 0.4s ease;
         }
@@ -1703,9 +1701,11 @@ export default function Home({ setCurrentPage }) {
         .process-card-new.cta-card-new {
           background-color: #3b66f5;
           border-color: #3b66f5;
-          justify-content: space-between;
-          align-items: flex-start;
+          justify-content: center;
+          align-items: center;
+          text-align: center;
           cursor: pointer;
+          min-height: 290px;
         }
         .process-card-new.cta-card-new:hover {
           background-color: #2a52d8;
@@ -1717,27 +1717,9 @@ export default function Home({ setCurrentPage }) {
           font-size: 24px;
           font-weight: 900;
           color: #ffffff;
-          line-height: 1.25;
+          line-height: 1.35;
           text-transform: uppercase;
-          margin-top: 10px;
-        }
-        .cta-card-link-new {
-          font-family: var(--font-sans);
-          font-size: 13px;
-          font-weight: 700;
-          color: #ffffff;
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          margin-top: 30px;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-        .cta-card-link-new .arrow {
-          transition: transform 0.3s ease;
-        }
-        .process-card-new.cta-card-new:hover .cta-card-link-new .arrow {
-          transform: translateX(4px);
+          margin: 0;
         }
 
         @media (max-width: 1024px) {
