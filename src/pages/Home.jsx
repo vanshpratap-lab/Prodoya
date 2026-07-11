@@ -490,38 +490,84 @@ export default function Home({ setCurrentPage }) {
       </section>
 
       {/* Process Section */}
-      <section className="process-section section-grey">
+      <section className="process-section section-grey" id="process">
         <div className="container">
-          <div className="section-header">
+          <div className="section-header text-center">
             <span className="tag-badge">Our Process</span>
-            <h2 className="section-title-large">Five steps to scale.</h2>
+            <h2 className="section-title-large uppercase-title">Five steps to scale.</h2>
           </div>
 
-          <div className="process-timeline">
-            <div className="process-step-card">
-              <div className="step-num">01</div>
-              <h3 className="step-title">Discover</h3>
-              <p>We audit your market, audience, competitors, and current positioning to find where the real opportunity is.</p>
+          <div className="process-grid-new">
+            {/* Card 1 — Step 01 */}
+            <div className="process-card-new">
+              <span className="process-card-step-label">• Step 01</span>
+              <div className="process-card-visual-box">
+                <img src="/process/call_step_new.svg" alt="Discovery Call" />
+              </div>
+              <h3 className="process-card-title-new">DISCOVERY CALL</h3>
+              <p className="process-card-desc-new">
+                First, we learn your vision and requirements to define a clear project strategy.
+              </p>
             </div>
-            <div className="process-step-card">
-              <div className="step-num">02</div>
-              <h3 className="step-title">Strategy</h3>
-              <p>A detailed growth blueprint before a single pixel is placed — messaging, architecture, channels, milestones.</p>
+
+            {/* Card 2 — Step 02 */}
+            <div className="process-card-new">
+              <span className="process-card-step-label">• Step 02</span>
+              <div className="process-card-visual-box">
+                <img src="/process/app_new.svg" alt="Design" />
+              </div>
+              <h3 className="process-card-title-new">DESIGN</h3>
+              <p className="process-card-desc-new">
+                We begin by understanding your vision and goals to craft the right strategy.
+              </p>
             </div>
-            <div className="process-step-card">
-              <div className="step-num">03</div>
-              <h3 className="step-title">Design</h3>
-              <p>High-fidelity experiences that balance beauty with conversion — tested, iterated, and signed off together.</p>
+
+            {/* Card 3 — Step 03 */}
+            <div className="process-card-new">
+              <span className="process-card-step-label">• Step 03</span>
+              <div className="process-card-visual-box">
+                <img src="/process/development_new.svg" alt="Development" />
+              </div>
+              <h3 className="process-card-title-new">DEVELOPMENT</h3>
+              <p className="process-card-desc-new">
+                Our developers turn your designs into clean, scalable code built for the future.
+              </p>
             </div>
-            <div className="process-step-card">
-              <div className="step-num">04</div>
-              <h3 className="step-title">Build</h3>
-              <p>Clean, scalable development with performance, SEO, and integrations baked in from day one.</p>
+
+            {/* Card 4 — Step 04 */}
+            <div className="process-card-new">
+              <span className="process-card-step-label">• Step 04</span>
+              <div className="process-card-visual-box">
+                <img src="/process/meter_new.svg" alt="Quality Assurance" />
+              </div>
+              <h3 className="process-card-title-new">QA & TESTING</h3>
+              <p className="process-card-desc-new">
+                We thoroughly test every feature, integration, and user flow to ensure flawless performance.
+              </p>
             </div>
-            <div className="process-step-card">
-              <div className="step-num">05</div>
-              <h3 className="step-title">Scale</h3>
-              <p>Continuous optimisation — A/B testing, automation refinement, analytics reviews, and growth experiments.</p>
+
+            {/* Card 5 — Step 05 */}
+            <div className="process-card-new">
+              <span className="process-card-step-label">• Step 05</span>
+              <div className="process-card-visual-box">
+                <img src="/process/deploy_new.svg" alt="Deployment" />
+              </div>
+              <h3 className="process-card-title-new">DEPLOYMENT</h3>
+              <p className="process-card-desc-new">
+                We handle server setups, app store submissions, and DNS configs for a seamless release.
+              </p>
+            </div>
+
+            {/* Card 6 — CTA Card */}
+            <div className="process-card-new cta-card-new" onClick={() => handleNavClick('contact')}>
+              <div className="cta-card-title-new">
+                LET'S TRANSFORM <br />
+                YOUR IDEA INTO <br />
+                REALITY
+              </div>
+              <div className="cta-card-link-new">
+                Start Your Project <span className="arrow">→</span>
+              </div>
             </div>
           </div>
         </div>
@@ -1586,55 +1632,125 @@ export default function Home({ setCurrentPage }) {
         }
 
         /* Process Steps */
-        .process-timeline {
+        .process-grid-new {
           display: grid;
-          grid-template-columns: repeat(5, 1fr);
-          gap: 20px;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 28px;
           margin-top: 50px;
         }
-
-        .process-step-card {
-          background-color: var(--color-white);
-          padding: 30px 24px;
-          border-radius: 4px;
-          border: 1px solid var(--color-border);
-          position: relative;
-          transition: var(--transition-smooth);
+        .process-card-new {
+          background: #ffffff;
+          border: 1px solid #e8eaf0;
+          border-radius: 16px;
+          padding: 28px;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+          transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+          display: flex;
+          flex-direction: column;
         }
-
-        .process-step-card:hover {
-          transform: scale(1.03);
-          box-shadow: 0 10px 25px rgba(0,0,0,0.03);
-          border-color: var(--color-accent-yellow);
+        .process-card-new:hover {
+          transform: translateY(-5px);
+          box-shadow: 0 16px 36px rgba(0,0,0,0.06);
+          border-color: #cbd5e1;
         }
-
-        .step-num {
+        .process-card-step-label {
           font-family: var(--font-sans);
           font-size: 11px;
-          font-weight: 800;
-          color: var(--color-accent-gold);
+          font-weight: 700;
+          color: #3b66f5;
           margin-bottom: 16px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          display: block;
         }
-
-        .step-title {
-          font-family: var(--font-serif);
-          font-size: 18px;
-          margin-bottom: 12px;
+        .process-card-visual-box {
+          height: 150px;
+          background: #f8fafc;
+          border: 1px solid #f1f5f9;
+          border-radius: 12px;
+          margin-bottom: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+          position: relative;
         }
-
-        .process-step-card p {
+        .process-card-visual-box img {
+          max-width: 90%;
+          max-height: 90%;
+          object-fit: contain;
+          transition: transform 0.4s ease;
+        }
+        .process-card-new:hover .process-card-visual-box img {
+          transform: scale(1.05);
+        }
+        .process-card-title-new {
+          font-family: var(--font-accent);
+          font-size: 16px;
+          font-weight: 800;
+          color: var(--color-text-dark-blue);
+          margin-bottom: 10px;
+          text-transform: uppercase;
+        }
+        .process-card-desc-new {
+          font-size: 12.5px;
+          line-height: 1.6;
+          color: #64748b;
+          margin: 0;
+        }
+        
+        /* CTA Card Specific */
+        .process-card-new.cta-card-new {
+          background-color: #3b66f5;
+          border-color: #3b66f5;
+          justify-content: space-between;
+          align-items: flex-start;
+          cursor: pointer;
+        }
+        .process-card-new.cta-card-new:hover {
+          background-color: #2a52d8;
+          border-color: #2a52d8;
+          box-shadow: 0 16px 36px rgba(59,102,245,0.3);
+        }
+        .cta-card-title-new {
+          font-family: var(--font-accent);
+          font-size: 24px;
+          font-weight: 900;
+          color: #ffffff;
+          line-height: 1.25;
+          text-transform: uppercase;
+          margin-top: 10px;
+        }
+        .cta-card-link-new {
+          font-family: var(--font-sans);
           font-size: 13px;
+          font-weight: 700;
+          color: #ffffff;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          margin-top: 30px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        .cta-card-link-new .arrow {
+          transition: transform 0.3s ease;
+        }
+        .process-card-new.cta-card-new:hover .cta-card-link-new .arrow {
+          transform: translateX(4px);
         }
 
         @media (max-width: 1024px) {
-          .process-timeline {
+          .process-grid-new {
             grid-template-columns: repeat(2, 1fr);
           }
         }
 
         @media (max-width: 600px) {
-          .process-timeline {
+          .process-grid-new {
             grid-template-columns: 1fr;
+            max-width: 440px;
+            margin: 0 auto;
           }
         }
 
