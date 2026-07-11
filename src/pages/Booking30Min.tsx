@@ -91,9 +91,10 @@ export default function Booking30Min() {
   const [viewAnimKey, setViewAnimKey] = useState(0);
 
   // Week view (for week/timeline modes)
-  const [weekStart,   setWeekStart]   = useState<Date>(today);
-  const [weekAnimDir, setWeekAnimDir] = useState<'left'|'right'|null>(null);
-  const [isAnimating, setIsAnimating] = useState(false);
+  const [weekStart,     setWeekStart]     = useState<Date>(today);
+  const [weekAnimDir,   setWeekAnimDir]   = useState<'left'|'right'|null>(null);
+  const [isAnimating,   setIsAnimating]   = useState(false);
+  const [selWeekDay,    setSelWeekDay]    = useState<number>(-1); // index 0-6 of selected col
 
   // Options
   const [timeFormat, setTimeFormat] = useState<'12h'|'24h'>('24h');
@@ -224,7 +225,7 @@ export default function Booking30Min() {
         <div className="bk-section">
           <p className="bk-sect-lbl">🚀 Mobile App Strategy Session:</p>
           <ol className="bk-ol">
-            <li>Your app idea and target users</li>
+            <li>Your app, Website, CRAZY SOFTWARE idea and target users</li>
             <li>Technical needs and platform choice</li>
             <li>Timeline and budget discussion</li>
             <li>Next steps</li>
@@ -284,11 +285,7 @@ export default function Booking30Min() {
           )}
           <div className="bk-topbar-spacer" />
 
-          {/* Overlay toggle */}
-          <label className="bk-overlay" onClick={e => { e.stopPropagation(); setOverlayOn(v => !v); toast(overlayOn ? 'Overlay removed' : 'Overlay active'); }}>
-            <div className={`bk-sw${overlayOn ? ' on' : ''}`}><div className="bk-knob" /></div>
-            <span>Overlay my calendar</span>
-          </label>
+
 
           {/* 3 View icons */}
           <div className="bk-view-grp">
@@ -415,8 +412,12 @@ export default function Booking30Min() {
               <div className="bk-wcol-hdrs">
                 {weekDays.map((d, i) => {
                   const isTod = isToday(d);
+                  const isSel = i === selWeekDay;
                   return (
-                    <div key={i} className={`bk-wcol-hdr${isTod ? ' tod' : ''}`}>
+                    <div key={i}
+                      className={`bk-wcol-hdr${isTod ? ' tod' : ''}${isSel ? ' sel-col' : ''}`}
+                      onClick={() => { setSelWeekDay(i); toast(`${WEEK_SHORT[d.getDay()]} ${d.getDate()}`); }}
+                    >
                       <span className="bk-wday-lbl">{WEEK_UPPER[d.getDay()]}</span>
                       <span className={`bk-wday-num${isTod ? ' tod-circle' : ''}`}>{String(d.getDate()).padStart(2,'0')}</span>
                     </div>
@@ -460,8 +461,12 @@ export default function Booking30Min() {
                 <div className="bk-tl-gutter-head" />
                 {weekDays.map((d, i) => {
                   const isTod = isToday(d);
+                  const isSel = i === selWeekDay;
                   return (
-                    <div key={i} className={`bk-wcol-hdr${isTod ? ' tod' : ''}`}>
+                    <div key={i}
+                      className={`bk-wcol-hdr${isTod ? ' tod' : ''}${isSel ? ' sel-col' : ''}`}
+                      onClick={() => { setSelWeekDay(i); toast(`${WEEK_SHORT[d.getDay()]} ${d.getDate()}`); }}
+                    >
                       <span className="bk-wday-lbl">{WEEK_UPPER[d.getDay()]}</span>
                       <span className={`bk-wday-num${isTod ? ' tod-circle' : ''}`}>{String(d.getDate()).padStart(2,'0')}</span>
                     </div>
@@ -665,12 +670,7 @@ export default function Booking30Min() {
         .bk-today-pill:hover { border-color:#71717a; color:#fff; background:rgba(255,255,255,.04); }
 
         /* Overlay */
-        .bk-overlay { display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none; }
-        .bk-overlay span { font-size:11.5px; font-weight:600; color:#71717a; white-space:nowrap; }
-        .bk-sw { width:30px; height:16px; border-radius:99px; background:#2a2a38; position:relative; transition:background .3s; flex-shrink:0; }
-        .bk-sw.on { background:#3b66f5; }
-        .bk-knob { position:absolute; top:2px; left:2px; width:12px; height:12px; border-radius:50%; background:#fff; transition:transform .28s cubic-bezier(.34,1.56,.64,1); box-shadow:0 1px 4px rgba(0,0,0,.4); }
-        .bk-sw.on .bk-knob { transform:translateX(14px); }
+
 
         /* View icons */
         .bk-view-grp { display:flex; gap:3px; }
@@ -692,18 +692,21 @@ export default function Booking30Min() {
         .bk-fmt.act { background:#27272a; color:#fff; }
 
         /* ── Content wrapper */
-        .bk-content { flex:1; overflow:hidden; display:flex; }
+        .bk-content { flex:1; overflow-y:auto; display:flex; }
         .bk-content-in { animation: bk-content-in .35s cubic-bezier(.16,1,.3,1) both; }
         @keyframes bk-content-in { from{opacity:0;transform:scale(.98)} to{opacity:1;transform:scale(1)} }
 
         /* ════ VIEW 1: CALENDAR + SLOTS ══════════════════════════════════════ */
-        .bk-cal-layout { display:flex; flex:1; overflow:hidden; }
+        .bk-cal-layout { display:flex; flex:1; overflow-y:auto; min-height:0; }
 
         /* Month calendar */
         .bk-cal-panel {
           flex:1; padding:22px 24px; display:flex; flex-direction:column;
-          border-right:1px solid #1e1e26; overflow:hidden;
+          border-right:1px solid #1e1e26; overflow-y:auto;
+          scrollbar-width:thin; scrollbar-color:#27272a transparent;
         }
+        .bk-cal-panel::-webkit-scrollbar { width:3px; }
+        .bk-cal-panel::-webkit-scrollbar-thumb { background:#27272a; border-radius:99px; }
         .bk-cal-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
         .bk-month-lbl { font-size:15px; font-weight:700; color:#fff; }
         .bk-year { color:#71717a; font-weight:500; }
@@ -717,7 +720,8 @@ export default function Booking30Min() {
 
         .bk-cal-grid {
           display:grid; grid-template-columns:repeat(7,1fr);
-          gap:6px; flex:1;
+          gap:6px;
+          grid-auto-rows: minmax(72px, auto);
         }
         .bk-cal-grid.cal-anim-right { animation: bk-cal-r .22s ease both; }
         .bk-cal-grid.cal-anim-left  { animation: bk-cal-l .22s ease both; }
@@ -727,11 +731,11 @@ export default function Booking30Min() {
         .bk-wday-hdr { font-size:9.5px; font-weight:700; color:#3f3f46; text-align:center; padding-bottom:6px; text-transform:uppercase; }
 
         .bk-day {
-          aspect-ratio:1; background:#1c1c22; border:none; border-radius:8px;
+          min-height:72px; background:#1c1c22; border:none; border-radius:8px;
           color:#a1a1aa; font-size:12.5px; font-weight:600;
           display:flex; flex-direction:column; align-items:center; justify-content:center;
           position:relative; transition:background .18s, color .18s, transform .18s, box-shadow .18s;
-          cursor:pointer;
+          cursor:pointer; width:100%;
         }
         .bk-day:hover:not(:disabled) { background:#252530; color:#fff; transform:scale(1.06); box-shadow:0 4px 12px rgba(0,0,0,.3); }
         .bk-day:disabled { opacity:.28; cursor:default; }
@@ -779,14 +783,32 @@ export default function Booking30Min() {
         @keyframes bk-wanim-r { from{transform:translateX(28px);opacity:0} to{transform:translateX(0);opacity:1} }
         @keyframes bk-wanim-l { from{transform:translateX(-28px);opacity:0} to{transform:translateX(0);opacity:1} }
 
-        .bk-wcol-hdrs { display:grid; grid-template-columns:repeat(7,1fr); border-bottom:1px solid #1e1e26; flex-shrink:0; }
-        .bk-wcol-hdr { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:10px 4px; gap:3px; border-right:1px solid #1e1e26; }
+        .bk-wcol-hdrs { display:grid; grid-template-columns:repeat(7,1fr); border-bottom:2px solid #1e1e26; flex-shrink:0; background:#0f0f12; }
+        .bk-wcol-hdr {
+          display:flex; flex-direction:column; align-items:center; justify-content:center;
+          padding:14px 4px 12px; gap:6px;
+          border-right:1px solid #1e1e26; cursor:pointer;
+          transition: background .18s;
+        }
         .bk-wcol-hdr:last-child { border-right:none; }
-        .bk-wcol-hdr.tod { background:rgba(59,102,245,.04); }
-        .bk-wday-lbl { font-size:9px; font-weight:700; color:#52525b; text-transform:uppercase; letter-spacing:.5px; }
-        .bk-wcol-hdr.tod .bk-wday-lbl { color:#a1a1aa; }
-        .bk-wday-num { font-size:12px; font-weight:600; color:#71717a; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
-        .bk-wday-num.tod-circle { background:#fff; color:#000; font-weight:700; }
+        .bk-wcol-hdr:hover { background:rgba(255,255,255,.03); }
+        .bk-wcol-hdr.tod { background:transparent; }
+        .bk-wcol-hdr.sel-col { background:rgba(59,102,245,.06); }
+        .bk-wday-lbl {
+          font-size:10px; font-weight:800; color:#3f3f46;
+          text-transform:uppercase; letter-spacing:.8px;
+        }
+        .bk-wcol-hdr.tod .bk-wday-lbl { color:#71717a; }
+        .bk-wcol-hdr.sel-col .bk-wday-lbl { color:#6b8af5; }
+        .bk-wday-num {
+          font-size:13px; font-weight:600; color:#52525b;
+          width:28px; height:28px; border-radius:50%;
+          display:flex; align-items:center; justify-content:center;
+          transition: background .18s, color .18s;
+        }
+        .bk-wcol-hdr.tod .bk-wday-num { color:#d4d4d8; }
+        .bk-wcol-hdr.sel-col .bk-wday-num { color:#6b8af5; }
+        .bk-wday-num.tod-circle { background:#fff; color:#000 !important; font-weight:800; box-shadow:0 2px 8px rgba(0,0,0,.4); }
 
         .bk-week-fmt-row { display:flex; gap:4px; padding:8px 12px; border-bottom:1px solid #1e1e26; }
 
