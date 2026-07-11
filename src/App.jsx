@@ -6,23 +6,27 @@ import About from './pages/About';
 import Services from './pages/Services';
 import Work from './pages/Work';
 import Contact from './pages/Contact';
+import Booking30Min from './pages/Booking30Min';
 
 function App() {
-  const [currentPage, setCurrentPage] = useState('home');
+  const [currentPage, setCurrentPage] = useState(() => {
+    const hash = window.location.hash.replace('#', '');
+    if (['home', 'about', 'services', 'work', 'contact', '30min'].includes(hash)) {
+      return hash;
+    }
+    return 'home';
+  });
 
   // Simple hash router sync
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '');
-      if (['home', 'about', 'services', 'work', 'contact'].includes(hash)) {
+      if (['home', 'about', 'services', 'work', 'contact', '30min'].includes(hash)) {
         setCurrentPage(hash);
       }
     };
 
     window.addEventListener('hashchange', handleHashChange);
-    // Initial check
-    handleHashChange();
-
     return () => {
       window.removeEventListener('hashchange', handleHashChange);
     };
@@ -30,7 +34,10 @@ function App() {
 
   // Update hash when page changes state-wise
   useEffect(() => {
-    window.location.hash = currentPage;
+    const currentHash = window.location.hash.replace('#', '');
+    if (currentPage !== currentHash) {
+      window.location.hash = currentPage;
+    }
   }, [currentPage]);
 
   const renderPage = () => {
@@ -45,20 +52,24 @@ function App() {
         return <Work setCurrentPage={setCurrentPage} />;
       case 'contact':
         return <Contact />;
+      case '30min':
+        return <Booking30Min />;
       default:
         return <Home setCurrentPage={setCurrentPage} />;
     }
   };
 
+  const isBookingPage = currentPage === '30min';
+
   return (
     <div className="app-container">
-      <Header currentPage={currentPage} setCurrentPage={setCurrentPage} />
+      {!isBookingPage && <Header currentPage={currentPage} setCurrentPage={setCurrentPage} />}
       
-      <main className="main-content">
+      <main className="main-content" style={isBookingPage ? { marginTop: 0 } : undefined}>
         {renderPage()}
       </main>
 
-      <Footer setCurrentPage={setCurrentPage} />
+      {!isBookingPage && <Footer setCurrentPage={setCurrentPage} />}
 
       <style>{`
         .app-container {

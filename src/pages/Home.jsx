@@ -569,7 +569,7 @@ export default function Home({ setCurrentPage }) {
                 className="cta-card-btn-new" 
                 onClick={(e) => {
                   e.stopPropagation();
-                  window.open('/30min/index.html', '_blank');
+                  window.open('/#30min', '_blank');
                 }}
               >
                 BOOK A FREE CONSULTATION
