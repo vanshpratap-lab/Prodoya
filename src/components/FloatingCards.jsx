@@ -26,15 +26,14 @@ const CARDS = [
 
 export default function FloatingCards() {
   const sentinelRef = useRef(null);
-  const closeTimer  = useRef(null);
 
-  // phase: 'hidden' → 'sliding-in' → 'stacked' → 'fanning' → 'fanned'
-  const [phase,     setPhase]     = useState('hidden');
+  // phase: always 'fanned'
+  const [phase,     setPhase]     = useState('fanned');
   const [activeCard, setActiveCard] = useState(null); // which card is on top
   const [scale,     setScale]     = useState(1);
   const [isMobile,  setIsMobile]  = useState(false);
-  // mobile-only toggle
-  const [mobileOpen, setMobileOpen] = useState(false);
+  // mobile-only toggle: always open by default
+  const [mobileOpen, setMobileOpen] = useState(true);
 
   // Scale for responsive sizing
   useEffect(() => {
@@ -50,53 +49,25 @@ export default function FloatingCards() {
     return () => window.removeEventListener('resize', compute);
   }, []);
 
-  // Scroll-triggered: slide in → stack → fan open → stay open
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && phase === 'hidden') {
-          setPhase('sliding-in');
-          setTimeout(() => setPhase('stacked'),  700);
-          setTimeout(() => setPhase('fanning'),  1100);
-          setTimeout(() => setPhase('fanned'),   1800);
-        }
-      },
-      { threshold: 0.15 }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [phase]);
-
-  const isFanned  = phase === 'fanning' || phase === 'fanned';
-  const isHidden  = phase === 'hidden';
-  const isSliding = phase === 'sliding-in';
+  const isFanned  = true;
+  const isHidden  = false;
+  const isSliding = false;
 
   // On desktop: clicking/hovering a card makes it active (comes to front, lifts up)
   const handleCardEnter = (num) => {
-    if (!isMobile && isFanned) setActiveCard(num);
+    if (!isMobile) setActiveCard(num);
   };
   const handleCardLeave = () => {
     if (!isMobile) setActiveCard(null);
   };
   const handleCardClick = (num) => {
-    if (isMobile) {
-      // mobile: toggle whole deck open/close
-      if (phase !== 'fanned' && phase !== 'stacked') return;
-      setMobileOpen(prev => !prev);
-    } else {
-      // desktop: bring clicked card to front
-      if (isFanned) setActiveCard(prev => prev === num ? null : num);
+    if (!isMobile) {
+      setActiveCard(prev => prev === num ? null : num);
     }
   };
 
-  // Effective fanned state
-  const showFanned = isMobile ? mobileOpen : isFanned;
-  // On mobile, use phase for stacked unless mobileOpen
-  const effectiveFanned = isMobile
-    ? (phase === 'fanned' || phase === 'fanning') && mobileOpen
-    : isFanned;
+  const showFanned = true;
+  const effectiveFanned = true;
 
   const rootHeight = Math.max(180, Math.round(295 * scale) + 60);
 
