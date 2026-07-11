@@ -565,7 +565,13 @@ export default function Home({ setCurrentPage }) {
                 YOUR IDEA INTO <br />
                 REALITY
               </div>
-              <button className="cta-card-btn-new">
+              <button 
+                className="cta-card-btn-new" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.open('/30min/index.html', '_blank');
+                }}
+              >
                 BOOK A FREE CONSULTATION
               </button>
             </div>

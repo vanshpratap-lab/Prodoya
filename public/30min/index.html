@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Let's discuss your app idea. - Flutter your Way</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0c0c0d;
+      --card-bg: #18181b;
+      --border-color: #27272a;
+      --text-primary: #ffffff;
+      --text-secondary: #a1a1aa;
+      --accent-blue: #3b66f5;
+      --accent-blue-hover: #2a52d8;
+      --font-sans: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 20px;
+    }
+
+    /* Top Control Bar */
+    .top-bar {
+      width: 100%;
+      max-width: 1060px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 20px;
+      padding: 0 10px;
+      margin-bottom: 10px;
+    }
+
+    .toggle-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+
+    .toggle-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      user-select: none;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 36px;
+      height: 20px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #3f3f46;
+      transition: .3s;
+      border-radius: 20px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: var(--accent-blue);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(16px);
+    }
+
+    .top-icons {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .icon-btn {
+      background: none;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-secondary);
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .icon-btn:hover, .icon-btn.active {
+      border-color: #52525b;
+      color: var(--text-primary);
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    /* Main Booking Card */
+    .booking-card {
+      width: 100%;
+      max-width: 1060px;
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+      display: grid;
+      grid-template-columns: 320px 1fr 280px;
+      min-height: 560px;
+      overflow: hidden;
+    }
+
+    /* Column 1: Event Details */
+    .details-col {
+      padding: 32px;
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      overflow-y: auto;
+    }
+
+    .logo-container {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background-color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .logo-container svg {
+      width: 24px;
+      height: 24px;
+      color: var(--accent-blue);
+    }
+
+    .brand-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .event-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-top: 8px;
+      margin-bottom: 20px;
+      line-height: 1.3;
+    }
+
+    .event-info-block {
+      margin-bottom: 24px;
+    }
+
+    .event-subtitle {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .checklist-list {
+      list-style-type: decimal;
+      padding-left: 18px;
+      color: var(--text-secondary);
+      font-size: 13px;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+
+    .checklist-list li {
+      margin-bottom: 6px;
+    }
+
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+    }
+
+    .meta-item svg {
+      width: 16px;
+      height: 16px;
+      color: var(--text-secondary);
+    }
+
+    /* Timezone Picker Dropdown */
+    .tz-picker {
+      position: relative;
+      margin-top: 8px;
+    }
+
+    .tz-btn {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      padding: 4px 0;
+      transition: color 0.2s;
+    }
+
+    .tz-btn:hover {
+      color: var(--text-primary);
+    }
+
+    .tz-dropdown {
+      position: absolute;
+      bottom: 100%;
+      left: 0;
+      margin-bottom: 8px;
+      background-color: #1e1e24;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      width: 240px;
+      max-height: 180px;
+      overflow-y: auto;
+      z-index: 100;
+      display: none;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+
+    .tz-dropdown.open {
+      display: block;
+    }
+
+    .tz-option {
+      padding: 10px 14px;
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: background-color 0.15s, color 0.15s;
+    }
+
+    .tz-option:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+      color: var(--text-primary);
+    }
+
+    .tz-option.selected {
+      background-color: rgba(59, 102, 245, 0.15);
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    /* Column 2: Calendar */
+    .calendar-col {
+      padding: 32px;
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .calendar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .month-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .nav-arrows {
+      display: flex;
+      gap: 8px;
+    }
+
+    .arrow-btn {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      transition: background-color 0.2s;
+    }
+
+    .arrow-btn:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+      color: var(--text-primary);
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+    }
+
+    .weekday-header {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-align: center;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .day-cell {
+      aspect-ratio: 1;
+      border: none;
+      background-color: #202024;
+      color: var(--text-primary);
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.2s ease;
+    }
+
+    .day-cell:hover:not(.empty) {
+      background-color: #27272a;
+      transform: scale(1.03);
+    }
+
+    .day-cell.empty {
+      background: none;
+      cursor: default;
+    }
+
+    .day-cell.selected {
+      background-color: var(--text-primary);
+      color: #000000;
+      font-weight: 700;
+    }
+
+    .day-cell.selected:hover {
+      background-color: var(--text-primary);
+      color: #000000;
+    }
+
+    .day-dot {
+      width: 3.5px;
+      height: 3.5px;
+      background-color: #000000;
+      border-radius: 50%;
+      margin-top: 2px;
+      position: absolute;
+      bottom: 6px;
+    }
+
+    /* Column 3: Time Slots */
+    .slots-col {
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .slots-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .selected-date-label {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .format-toggle {
+      display: flex;
+      background-color: #1f1f24;
+      border-radius: 6px;
+      padding: 2px;
+    }
+
+    .format-btn {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .format-btn.active {
+      background-color: var(--card-bg);
+      color: var(--text-primary);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+
+    .slots-container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow-y: auto;
+      max-height: 400px;
+      padding-right: 4px;
+    }
+
+    /* Custom Scrollbar */
+    .slots-container::-webkit-scrollbar, .details-col::-webkit-scrollbar {
+      width: 4px;
+    }
+    .slots-container::-webkit-scrollbar-thumb, .details-col::-webkit-scrollbar-thumb {
+      background-color: var(--border-color);
+      border-radius: 4px;
+    }
+
+    .slot-btn {
+      width: 100%;
+      background: none;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-primary);
+      padding: 14px;
+      font-size: 13.5px;
+      font-weight: 600;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .slot-btn:hover {
+      border-color: #52525b;
+      background-color: rgba(255, 255, 255, 0.04);
+    }
+
+    /* Modal / Booking Form overlay */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      padding: 20px;
+    }
+
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      max-width: 460px;
+      width: 100%;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8);
+      overflow: hidden;
+      transform: scale(0.95);
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .modal-overlay.open .modal-card {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      padding: 24px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    .close-btn:hover {
+      color: var(--text-primary);
+    }
+
+    .modal-body {
+      padding: 24px;
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .form-input {
+      width: 100%;
+      background-color: #111113;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-primary);
+      padding: 11px 14px;
+      font-family: var(--font-sans);
+      font-size: 13.5px;
+      transition: border-color 0.2s;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--accent-blue);
+    }
+
+    .modal-footer {
+      padding: 16px 24px 24px;
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 12px;
+      border-radius: 6px;
+      font-family: var(--font-sans);
+      font-size: 13.5px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .btn-secondary {
+      background: none;
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+    }
+
+    .btn-secondary:hover {
+      border-color: #52525b;
+      color: var(--text-primary);
+    }
+
+    .btn-primary {
+      background-color: var(--text-primary);
+      border: 1px solid var(--text-primary);
+      color: #000000;
+    }
+
+    .btn-primary:hover {
+      opacity: 0.9;
+    }
+
+    /* Confirmation Box */
+    .success-panel {
+      text-align: center;
+      padding: 40px 20px;
+      display: none;
+    }
+
+    .success-icon-wrapper {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      background-color: rgba(16, 185, 129, 0.1);
+      color: #10b981;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .success-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .success-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    /* Overlay My Calendar toast notification */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background-color: #18181b;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 14px 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 2000;
+      transform: translateY(120px);
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .toast.show {
+      transform: translateY(0);
+    }
+
+    .toast-icon {
+      color: #10b981;
+    }
+
+    /* Media Queries */
+    @media (max-width: 960px) {
+      .booking-card {
+        grid-template-columns: 1fr 1fr;
+      }
+      .slots-col {
+        grid-column: span 2;
+        border-top: 1px solid var(--border-color);
+        max-height: 360px;
+      }
+    }
+
+    @media (max-width: 660px) {
+      .booking-card {
+        grid-template-columns: 1fr;
+      }
+      .details-col {
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+      }
+      .calendar-col {
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+      }
+      .slots-col {
+        grid-column: span 1;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Control Bar -->
+  <div class="top-bar">
+    <div class="toggle-container" onclick="toggleOverlaySwitch()">
+      <span class="toggle-label">Overlay my calendar</span>
+      <label class="switch">
+        <input type="checkbox" id="overlaySwitch">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="top-icons">
+      <button class="icon-btn" title="Calendar list view">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+      </button>
+      <button class="icon-btn active" title="Grid View">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7"></rect>
+          <rect x="14" y="3" width="7" height="7"></rect>
+          <rect x="14" y="14" width="7" height="7"></rect>
+          <rect x="3" y="14" width="7" height="7"></rect>
+        </svg>
+      </button>
+      <button class="icon-btn" title="Side-by-side View">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+          <line x1="9" y1="3" x2="9" y2="21"></line>
+          <line x1="15" y1="3" x2="15" y2="21"></line>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Booking Card -->
+  <div class="booking-card">
+    
+    <!-- Column 1: Details -->
+    <div class="details-col">
+      <div class="logo-container">
+        <!-- Brand SVG Wave Logo -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+        </svg>
+      </div>
+
+      <span class="brand-name">Flutter your Way</span>
+      <h2 class="event-title">Let's discuss your app idea.</h2>
+
+      <div class="event-info-block">
+        <h4 class="event-subtitle">🚀 Mobile App Strategy Session:</h4>
+        <ol class="checklist-list">
+          <li>Your app idea and target users</li>
+          <li>Technical needs and platform choice</li>
+          <li>Timeline and budget discussion</li>
+          <li>Next steps</li>
+        </ol>
+      </div>
+
+      <!-- Duration -->
+      <div class="meta-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        <span>30m</span>
+      </div>
+
+      <!-- Location -->
+      <div class="meta-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 7l-7 5 7 5V7z"></path>
+          <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+        </svg>
+        <span>Google Meet</span>
+      </div>
+
+      <!-- Timezone Dropdown Selector -->
+      <div class="tz-picker">
+        <button class="tz-btn" onclick="toggleTzDropdown(event)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="2" y1="12" x2="22" y2="12"></line>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+          </svg>
+          <span id="tzLabel">Asia/Kolkata</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="12" height="12">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+        <div class="tz-dropdown" id="tzDropdown">
+          <div class="tz-option" onclick="selectTz('Asia/Ashgabat GMT +5:00')">Asia/Ashgabat GMT +5:00</div>
+          <div class="tz-option" onclick="selectTz('Asia/Samarkand GMT +5:00')">Asia/Samarkand GMT +5:00</div>
+          <div class="tz-option" onclick="selectTz('Asia/Tashkent GMT +5:00')">Asia/Tashkent GMT +5:00</div>
+          <div class="tz-option selected" onclick="selectTz('Asia/Kolkata GMT +5:30')">Asia/Kolkata GMT +5:30</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Column 2: Calendar Grid -->
+    <div class="calendar-col">
+      <div class="calendar-header">
+        <span class="month-title" id="monthLabel">July 2026</span>
+        <div class="nav-arrows">
+          <button class="arrow-btn" onclick="prevMonth()">&lt;</button>
+          <button class="arrow-btn" onclick="nextMonth()">&gt;</button>
+        </div>
+      </div>
+
+      <div class="calendar-grid">
+        <span class="weekday-header">Sun</span>
+        <span class="weekday-header">Mon</span>
+        <span class="weekday-header">Tue</span>
+        <span class="weekday-header">Wed</span>
+        <span class="weekday-header">Thu</span>
+        <span class="weekday-header">Fri</span>
+        <span class="weekday-header">Sat</span>
+
+        <!-- Grid Days will be dynamically loaded via JS to allow month changes.
+             By default, July 2026 starts on Wednesday, with 3 empty cell offsets. -->
+      </div>
+    </div>
+
+    <!-- Column 3: Time Slot List -->
+    <div class="slots-col">
+      <div class="slots-header">
+        <span class="selected-date-label" id="slotsDateHeader">Sat 11</span>
+        <div class="format-toggle">
+          <button class="format-btn active" id="format12" onclick="setFormat('12h')">12h</button>
+          <button class="format-btn" id="format24" onclick="setFormat('24h')">24h</button>
+        </div>
+      </div>
+
+      <div class="slots-container" id="slotsContainer">
+        <!-- Buttons loaded by JS in selected format -->
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Booking Form Modal -->
+  <div class="modal-overlay" id="bookingModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Confirm Booking</h3>
+        <button class="close-btn" onclick="closeModal()">&times;</button>
+      </div>
+
+      <!-- Booking Form -->
+      <div class="modal-body" id="bookingFormBody">
+        <form id="bookingForm" onsubmit="submitForm(event)">
+          <div class="form-group">
+            <label class="form-label" for="userName">Name</label>
+            <input type="text" class="form-input" id="userName" placeholder="Your Name" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="userEmail">Email</label>
+            <input type="email" class="form-input" id="userEmail" placeholder="yourname@example.com" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="userNotes">Additional Notes</label>
+            <textarea class="form-input" id="userNotes" rows="3" placeholder="Tell us about your app concept..."></textarea>
+          </div>
+          <div class="form-group" style="margin-top: 10px; font-size: 13px; color: var(--text-secondary)">
+            📅 Date: <strong id="modalDateVal" style="color: var(--text-primary)">July 11, 2026</strong><br>
+            ⏰ Time: <strong id="modalTimeVal" style="color: var(--text-primary)">2:30pm</strong>
+          </div>
+          
+          <div class="modal-footer" style="padding: 16px 0 0 0">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Confirm Slot</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Success Screen -->
+      <div class="success-panel" id="successPanel">
+        <div class="success-icon-wrapper">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+        <h3 class="success-title">Meeting Confirmed!</h3>
+        <p class="success-desc">
+          We've sent a calendar invitation and Google Meet connection details to <span id="confirmEmailVal" style="color: var(--text-primary); font-weight:600"></span>.
+        </p>
+        <button class="btn btn-primary" onclick="closeModal()" style="width:100%">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toastBox">
+    <svg class="toast-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="20 6 9 17 4 12"></polyline>
+    </svg>
+    <span id="toastMessage">Calendar Overlay loaded successfully</span>
+  </div>
+
+  <script>
+    let activeTimeFormat = '12h';
+    let selectedDay = 11;
+    let selectedTime = '2:30pm';
+    let activeTz = 'Asia/Kolkata GMT +5:30';
+
+    const monthsData = [
+      { name: 'July 2026', totalDays: 31, startOffset: 3 } // Wed start
+    ];
+    let currentMonthIdx = 0;
+
+    // Time Slot List data (12h format default)
+    const rawTimes = [
+      '2:30pm', '3:00pm', '3:30pm', '4:00pm', '4:30pm',
+      '5:00pm', '5:30pm', '6:00pm', '6:30pm', '7:00pm'
+    ];
+
+    // Map 12h representation to 24h representation
+    function convertTo24h(time12) {
+      const pm = time12.endsWith('pm');
+      const timeClean = time12.replace('pm', '').replace('am', '');
+      const [hrsStr, minsStr] = timeClean.split(':');
+      let hrs = parseInt(hrsStr);
+      if (pm && hrs !== 12) hrs += 12;
+      if (!pm && hrs === 12) hrs = 0;
+      return `${hrs.toString().padStart(2, '0')}:${minsStr}`;
+    }
+
+    // Toggle timezone picker dropdown list
+    function toggleTzDropdown(e) {
+      e.stopPropagation();
+      document.getElementById('tzDropdown').classList.toggle('open');
+    }
+
+    // Select timezone from option list
+    function selectTz(tzName) {
+      activeTz = tzName;
+      document.getElementById('tzLabel').textContent = tzName.split(' ')[0]; // Show short label
+      
+      // Update selected state class inside options
+      const options = document.querySelectorAll('.tz-option');
+      options.forEach(opt => {
+        if (opt.textContent === tzName) {
+          opt.classList.add('selected');
+        } else {
+          opt.classList.remove('selected');
+        }
+      });
+
+      showToast(`Timezone changed to ${tzName.split(' ')[0]}`);
+      document.getElementById('tzDropdown').classList.remove('open');
+    }
+
+    // Close timezone picker dropdown when clicking outside
+    window.addEventListener('click', () => {
+      document.getElementById('tzDropdown').classList.remove('open');
+    });
+
+    // Toggle Overlay My Calendar Switch
+    function toggleOverlaySwitch() {
+      const isChecked = document.getElementById('overlaySwitch').checked;
+      if (isChecked) {
+        showToast("Connected! Syncing overlay with your calendar");
+      } else {
+        showToast("Calendar overlay removed");
+      }
+    }
+
+    // Prev / Next Month simulation
+    function prevMonth() {
+      showToast("Viewing past calendar periods is locked to July 2026");
+    }
+
+    function nextMonth() {
+      showToast("Viewing future calendar periods is locked to July 2026");
+    }
+
+    // Set active time format (12h or 24h)
+    function setFormat(fmt) {
+      activeTimeFormat = fmt;
+      document.getElementById('format12').classList.toggle('active', fmt === '12h');
+      document.getElementById('format24').classList.toggle('active', fmt === '24h');
+      loadTimeSlots();
+    }
+
+    // Get weekday name representation for selected July date
+    function getWeekdayLabel(day) {
+      // 1 is Wednesday, 2 is Thursday, 3 is Friday, 4 is Saturday, 5 is Sunday, 6 is Monday, 7 is Tuesday, 8 is Wednesday
+      // day = 11: offset is 3 empty spaces
+      // Index is (day + offset - 1) % 7
+      const daysArr = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const index = (day + 3 - 1) % 7;
+      return `${daysArr[index]} ${day}`;
+    }
+
+    // Initialize calendar days cells grid layout
+    function loadCalendarGrid() {
+      const gridContainer = document.querySelector('.calendar-grid');
+      // Keep weekday headers
+      const headers = Array.from(gridContainer.querySelectorAll('.weekday-header'));
+      gridContainer.innerHTML = '';
+      headers.forEach(h => gridContainer.appendChild(h));
+
+      const month = monthsData[currentMonthIdx];
+
+      // Add offsets
+      for (let i = 0; i < month.startOffset; i++) {
+        const offsetCell = document.createElement('div');
+        offsetCell.className = 'day-cell empty';
+        gridContainer.appendChild(offsetCell);
+      }
+
+      // Add active days
+      for (let day = 1; day <= month.totalDays; day++) {
+        const dayBtn = document.createElement('button');
+        dayBtn.className = `day-cell ${day === selectedDay ? 'selected' : ''}`;
+        dayBtn.textContent = day;
+        
+        // Sat 11 dot rendering
+        if (day === selectedDay) {
+          const dot = document.createElement('span');
+          dot.className = 'day-dot';
+          dayBtn.appendChild(dot);
+        }
+
+        dayBtn.onclick = () => {
+          selectDate(day);
+        };
+        gridContainer.appendChild(dayBtn);
+      }
+    }
+
+    // Date selection handler
+    function selectDate(day) {
+      selectedDay = day;
+      document.getElementById('slotsDateHeader').textContent = getWeekdayLabel(day);
+      loadCalendarGrid();
+      loadTimeSlots();
+      showToast(`Selected date: July ${day}, 2026`);
+    }
+
+    // Initialize time slots button list
+    function loadTimeSlots() {
+      const container = document.getElementById('slotsContainer');
+      container.innerHTML = '';
+
+      rawTimes.forEach(time => {
+        const btn = document.createElement('button');
+        btn.className = 'slot-btn';
+        btn.textContent = activeTimeFormat === '12h' ? time : convertTo24h(time);
+        btn.onclick = () => openBookingModal(btn.textContent);
+        container.appendChild(btn);
+      });
+    }
+
+    // Toast notification trigger
+    let toastTimeout;
+    function showToast(msg) {
+      const toast = document.getElementById('toastBox');
+      document.getElementById('toastMessage').textContent = msg;
+      toast.classList.add('show');
+      
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+
+    // Open booking confirmation modal
+    function openBookingModal(timeText) {
+      selectedTime = timeText;
+      document.getElementById('modalDateVal').textContent = `July ${selectedDay}, 2026`;
+      document.getElementById('modalTimeVal').textContent = selectedTime;
+      
+      // Reset form
+      document.getElementById('bookingForm').reset();
+      document.getElementById('bookingFormBody').style.display = 'block';
+      document.getElementById('successPanel').style.display = 'none';
+
+      document.getElementById('bookingModal').classList.add('open');
+    }
+
+    // Close booking confirmation modal
+    function closeModal() {
+      document.getElementById('bookingModal').classList.remove('open');
+    }
+
+    // Submit form handler
+    function submitForm(e) {
+      e.preventDefault();
+      const email = document.getElementById('userEmail').value;
+      
+      document.getElementById('confirmEmailVal').textContent = email;
+      document.getElementById('bookingFormBody').style.display = 'none';
+      document.getElementById('successPanel').style.display = 'block';
+      showToast("Booking request submitted!");
+    }
+
+    // Initial setups
+    window.addEventListener('DOMContentLoaded', () => {
+      loadCalendarGrid();
+      loadTimeSlots();
+      document.getElementById('slotsDateHeader').textContent = getWeekdayLabel(selectedDay);
+    });
+  </script>
+</body>
+</html>
