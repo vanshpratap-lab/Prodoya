@@ -9,18 +9,18 @@ const CARDS = [
     fRot: '-13deg',  fTx: '-155px', fTy: '18px', fZ: 1,
   },
   {
-    num: '02', title: 'Design',
-    desc: 'Experiences that convert. Websites, web apps & products built to delight users and drive measurable results.',
-    color: '#c8e4f8', textColor: '#1a2535',
-    sRot: '8deg',    sTx: '36px',  sTy: '-16px', sZ: 2,
-    fRot: '4deg',    fTx: '4px',   fTy: '-10px', fZ: 3,
-  },
-  {
     num: '03', title: 'Growth',
     desc: 'Systems that compound. AI automation, lead generation & paid acquisition engineered to scale your revenue.',
     color: '#f0c8f0', textColor: '#2e1535',
     sRot: '-14deg',  sTx: '-32px', sTy: '28px',  sZ: 1,
     fRot: '16deg',   fTx: '155px', fTy: '18px',  fZ: 2,
+  },
+  {
+    num: '02', title: 'Design',
+    desc: 'Experiences that convert. Websites, web apps & products built to delight users and drive measurable results.',
+    color: '#c8e4f8', textColor: '#1a2535',
+    sRot: '8deg',    sTx: '36px',  sTy: '-16px', sZ: 2,
+    fRot: '4deg',    fTx: '4px',   fTy: '-10px', fZ: 3,
   },
 ];
 
