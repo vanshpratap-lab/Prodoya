@@ -141,8 +141,14 @@ export default function Contact() {
           padding: 60px 0 40px;
         }
 
-        .contact-title-main {
+        .contact-page h1,
+        .contact-page h2,
+        .contact-page h3,
+        .contact-page h4 {
           font-family: var(--font-sans), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+        }
+
+        .contact-title-main {
           font-size: 46px;
           font-weight: 900;
           color: #0f172a;
@@ -180,7 +186,6 @@ export default function Contact() {
         }
 
         .contact-heading-left {
-          font-family: var(--font-sans), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
           font-size: 40px;
           font-weight: 900;
           color: #0f172a;
@@ -265,7 +270,7 @@ export default function Contact() {
           width: 1px;
           height: 18px;
           border-left: 1px dashed #cbd5e1;
-          margin-left: 16px;
+          margin-left: 15.5px; /* precisely half of 32px badge to align center */
         }
 
         /* Right info card styling */
@@ -278,7 +283,6 @@ export default function Contact() {
         }
 
         .contact-card-title {
-          font-family: var(--font-sans), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
           font-size: 26px;
           font-weight: 900;
           color: #0f172a;
