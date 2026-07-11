@@ -565,6 +565,9 @@ export default function Home({ setCurrentPage }) {
                 YOUR IDEA INTO <br />
                 REALITY
               </div>
+              <button className="cta-card-btn-new">
+                BOOK A FREE CONSULTATION
+              </button>
             </div>
           </div>
         </div>
@@ -1701,11 +1704,14 @@ export default function Home({ setCurrentPage }) {
         .process-card-new.cta-card-new {
           background-color: #3b66f5;
           border-color: #3b66f5;
-          justify-content: center;
-          align-items: center;
-          text-align: center;
+          justify-content: space-between;
+          align-items: flex-start;
+          text-align: left;
           cursor: pointer;
           min-height: 290px;
+          position: relative;
+          background-image: linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+          background-size: 8px 100%;
         }
         .process-card-new.cta-card-new:hover {
           background-color: #2a52d8;
@@ -1719,7 +1725,29 @@ export default function Home({ setCurrentPage }) {
           color: #ffffff;
           line-height: 1.35;
           text-transform: uppercase;
-          margin: 0;
+          margin-top: 10px;
+          margin-bottom: 0;
+        }
+        .cta-card-btn-new {
+          width: 100%;
+          background-color: #1a1f26;
+          color: #ffffff;
+          border: 1.5px solid #ffffff;
+          border-radius: 8px;
+          padding: 12px 16px;
+          font-family: var(--font-sans);
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
+          cursor: pointer;
+          transition: background-color 0.2s ease, transform 0.2s ease;
+          margin-top: auto;
+          text-align: center;
+        }
+        .cta-card-btn-new:hover {
+          background-color: #0f1319;
+          transform: scale(1.02);
         }
 
         @media (max-width: 1024px) {
