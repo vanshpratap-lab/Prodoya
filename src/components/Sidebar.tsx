@@ -1,5 +1,6 @@
 import { Github } from 'lucide-react';
 import Avatar from './Avatar';
+import type { Profile } from '../lib/supabase';
 
 interface SidebarProps {
   profileStats: {
@@ -9,9 +10,10 @@ interface SidebarProps {
     points: number;
   };
   sidebarOpen: boolean;
+  profile: Profile;
 }
 
-export default function Sidebar({ profileStats, sidebarOpen }: SidebarProps) {
+export default function Sidebar({ profileStats, sidebarOpen, profile }: SidebarProps) {
   if (!sidebarOpen) return null;
 
   return (
@@ -19,17 +21,19 @@ export default function Sidebar({ profileStats, sidebarOpen }: SidebarProps) {
       {/* Profile Card Widget */}
       <div className="profile-card-widget">
         <div className="profile-avatar-wrapper">
-          <Avatar 
-            name="Emma Watson" 
-            avatarUrl="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150" 
-            size={76} 
+          <Avatar
+            name={profile.full_name}
+            avatarUrl={profile.avatar_url}
+            size={76}
           />
         </div>
-        <h2 className="profile-name">Emma Watson</h2>
-        <p className="profile-role">Lead Product Architect</p>
-        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted-light)', marginBottom: '8px' }}>
-          🏫 Oxford Engineering
-        </div>
+        <h2 className="profile-name">{profile.full_name}</h2>
+        <p className="profile-role">{profile.role}</p>
+        {profile.college && (
+          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted-light)', marginBottom: '8px' }}>
+            🏫 {profile.college}
+          </div>
+        )}
 
         {/* Large Italianno Streak Display */}
         <div className="streak-hero-display" style={{ margin: '14px 0 10px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -68,13 +72,10 @@ export default function Sidebar({ profileStats, sidebarOpen }: SidebarProps) {
         </div>
       </div>
 
-      {/* Proof of Work Score Widget with hero.png overlay */}
-      <div 
-        className="options-list-widget relative overflow-hidden" 
-        style={{ 
-          backgroundImage: 'linear-gradient(rgba(30, 30, 30, 0.9), rgba(30, 30, 30, 0.9)), url("/hero.png")',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
+      {/* Proof of Work Score Widget */}
+      <div
+        className="options-list-widget relative overflow-hidden"
+        style={{
           border: '1px solid var(--color-dark-border)'
         }}
       >
@@ -87,12 +88,12 @@ export default function Sidebar({ profileStats, sidebarOpen }: SidebarProps) {
           </div>
           
           {/* Animated technology progress bar (fills on mount) */}
-          <div style={{ width: '100%', height: '6px', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: '3px', marginTop: '6px', overflow: 'hidden' }}>
+          <div style={{ width: '100%', height: '6px', backgroundColor: '#e5e7eb', borderRadius: '3px', marginTop: '6px', overflow: 'hidden' }}>
             <div 
               style={{ 
                 width: '65%', 
                 height: '100%', 
-                background: 'linear-gradient(90deg, var(--color-primary), #c084fc)', 
+                background: 'linear-gradient(90deg, var(--color-primary), #a78bfa)',
                 borderRadius: '3px',
                 animation: 'fillProgress 1s cubic-bezier(0.4, 0, 0.2, 1) forwards'
               }}
@@ -110,7 +111,7 @@ export default function Sidebar({ profileStats, sidebarOpen }: SidebarProps) {
                 <span>React / Frontend</span>
                 <span style={{ color: 'var(--color-primary)' }}>85%</span>
               </div>
-              <div style={{ width: '100%', height: '4px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
+              <div style={{ width: '100%', height: '4px', backgroundColor: '#e5e7eb', borderRadius: '2px', overflow: 'hidden' }}>
                 <div style={{ width: '85%', height: '100%', backgroundColor: 'var(--color-primary)', borderRadius: '2px' }} />
               </div>
             </div>
@@ -119,7 +120,7 @@ export default function Sidebar({ profileStats, sidebarOpen }: SidebarProps) {
                 <span>NumPy / AI Inference</span>
                 <span style={{ color: 'var(--color-primary)' }}>60%</span>
               </div>
-              <div style={{ width: '100%', height: '4px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
+              <div style={{ width: '100%', height: '4px', backgroundColor: '#e5e7eb', borderRadius: '2px', overflow: 'hidden' }}>
                 <div style={{ width: '60%', height: '100%', backgroundColor: 'var(--color-primary)', borderRadius: '2px' }} />
               </div>
             </div>

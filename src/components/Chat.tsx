@@ -111,7 +111,7 @@ export default function Chat({
         <div className="tg-chat-list">
           {filteredChats.length === 0 ? (
             <div className="tg-no-results">
-              <Search size={24} className="text-gray-600" />
+              <Search size={24} style={{ color: 'var(--color-text-muted)' }} />
               <p>No channels found</p>
             </div>
           ) : (
@@ -203,18 +203,18 @@ export default function Chat({
                 )}
                 
                 <div className="tg-msg-bubble-container">
-                  <div 
+                  <div
                     className="tg-msg-bubble"
                     style={{
-                      /* WCAG AA High Contrast alignment (more solid purple background) */
-                      backgroundColor: isOutgoing ? '#8b5cf6' : 'rgba(30, 30, 30, 0.95)',
-                      borderColor: isOutgoing ? 'transparent' : 'rgba(255, 255, 255, 0.04)',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                      backgroundColor: isOutgoing ? 'var(--color-primary)' : 'var(--color-surface)',
+                      color: isOutgoing ? 'var(--color-on-primary)' : 'var(--color-text-light)',
+                      borderColor: isOutgoing ? 'var(--color-primary)' : 'var(--color-dark-border)',
+                      boxShadow: 'var(--shadow-sm)'
                     }}
                   >
                     {!isOutgoing && msg.senderName && (
-                      <span className="tg-msg-sender-name" style={{ 
-                        color: msg.senderName.includes('Blaze') ? '#a78bfa' : (msg.senderName.includes('SangMata') ? '#60a5fa' : '#fb7185')
+                      <span className="tg-msg-sender-name" style={{
+                        color: msg.senderName.includes('Blaze') ? 'var(--color-primary)' : (msg.senderName.includes('SangMata') ? '#2563eb' : '#e11d48')
                       }}>
                         {msg.senderName}
                       </span>
@@ -222,7 +222,7 @@ export default function Chat({
                     <div style={{ whiteSpace: 'pre-line' }}>{msg.text}</div>
                     <div className="tg-msg-meta">
                       <span>{msg.time}</span>
-                      {isOutgoing && <span style={{ color: '#c084fc', marginLeft: '4px' }}>✓✓</span>}
+                      {isOutgoing && <span style={{ marginLeft: '4px' }}>✓✓</span>}
                     </div>
                   </div>
 
@@ -252,7 +252,7 @@ export default function Chat({
                 <Avatar name="Emma Watson" avatarUrl="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150" size={36} />
               </div>
               <div className="tg-msg-bubble-container">
-                <div className="tg-msg-bubble bg-black/40 border border-white/5 py-2 px-3 text-xs text-gray-400">
+                <div className="tg-msg-bubble" style={{ padding: '8px 12px', fontSize: '0.75rem', color: 'var(--color-text-muted-light)' }}>
                   <span className="animate-pulse">Typing...</span>
                 </div>
               </div>
@@ -267,21 +267,21 @@ export default function Chat({
           <button 
             type="button"
             onClick={scrollToBottom}
-            className="absolute bottom-20 right-6 bg-purple-500 hover:bg-purple-600 text-white rounded-full p-2.5 shadow-lg flex items-center justify-center transition-transform hover:scale-105 border-none cursor-pointer"
             style={{
               position: 'absolute',
               width: '40px',
               height: '40px',
               borderRadius: '50%',
               backgroundColor: 'var(--color-primary)',
-              color: '#121214',
+              color: 'var(--color-on-primary)',
               border: 'none',
               cursor: 'pointer',
               bottom: '76px',
               right: '24px',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              boxShadow: 'var(--shadow-md)'
             }}
             aria-label="Scroll to bottom"
           >

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Github, Sparkles, Terminal, Heart, ExternalLink } from 'lucide-react';
 import Avatar from './Avatar';
+import type { Profile } from '../lib/supabase';
 
 interface FeedPost {
   id: number;
@@ -28,6 +29,7 @@ interface FeedProps {
   searchQuery: string;
   feedFilter: 'all' | 'aiml' | 'webdev' | 'opensource' | 'hackathons';
   setFeedFilter: (filter: 'all' | 'aiml' | 'webdev' | 'opensource' | 'hackathons') => void;
+  currentUser: Profile;
 }
 
 export default function Feed({
@@ -37,6 +39,7 @@ export default function Feed({
   searchQuery,
   feedFilter,
   setFeedFilter,
+  currentUser,
 }: FeedProps) {
   const [newPostText, setNewPostText] = useState('');
   const [difficulty, setDifficulty] = useState<'beginner' | 'intermediate' | 'advanced'>('intermediate');
@@ -113,10 +116,10 @@ export default function Feed({
       <form className="feed-create-post-widget" onSubmit={onSubmit}>
         <div className="feed-create-input-row">
           <div className="feed-create-avatar">
-            <Avatar 
-              name="Emma Watson" 
-              avatarUrl="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150" 
-              size={42} 
+            <Avatar
+              name={currentUser.full_name}
+              avatarUrl={currentUser.avatar_url}
+              size={42}
             />
           </div>
           <textarea 
@@ -132,7 +135,8 @@ export default function Feed({
         {composerMode === 'code' && (
           <div style={{ padding: '0 0 0 54px' }}>
             <textarea
-              className="font-mono text-xs w-full bg-black/40 border border-white/10 rounded-lg p-3 text-emerald-400 outline-none h-28"
+              className="font-mono text-xs w-full rounded-lg p-3 outline-none h-28"
+              style={{ backgroundColor: '#0f172a', color: '#a7f3d0', border: '1px solid #1f2937', width: '100%', padding: '12px', borderRadius: '8px', fontFamily: 'monospace', fontSize: '0.8rem' }}
               placeholder="// Paste your code snippet here..."
               value={codeSnippet}
               onChange={(e) => setCodeSnippet(e.target.value)}
@@ -142,12 +146,12 @@ export default function Feed({
 
         {/* Github Repository Input Card */}
         {composerMode === 'github' && (
-          <div style={{ padding: '0 0 0 54px' }} className="flex flex-col gap-2">
-            <div className="flex items-center bg-black/40 border border-white/10 rounded-lg p-2 gap-2">
-              <Github size={16} className="text-gray-400" />
+          <div style={{ padding: '0 0 0 54px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', backgroundColor: 'var(--color-surface-elevated)', border: '1px solid var(--color-dark-border)', borderRadius: '8px', padding: '8px', gap: '8px' }}>
+              <Github size={16} style={{ color: 'var(--color-text-muted-light)' }} />
               <input
                 type="url"
-                className="bg-transparent border-none outline-none text-xs text-blue-400 flex-grow"
+                style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: '0.8rem', color: '#0369a1', flexGrow: 1 }}
                 placeholder="https://github.com/username/repository"
                 value={githubUrl}
                 onChange={(e) => setGithubUrl(e.target.value)}
@@ -161,7 +165,7 @@ export default function Feed({
             <button 
               type="button" 
               onClick={() => setComposerMode(composerMode === 'code' ? 'text' : 'code')}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', color: composerMode === 'code' ? 'var(--color-primary)' : '#888888', fontSize: '0.8rem' }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', color: composerMode === 'code' ? 'var(--color-primary)' : 'var(--color-text-muted-light)', fontSize: '0.8rem' }}
               aria-label="Add code snippet"
             >
               <Terminal size={15} />
@@ -170,7 +174,7 @@ export default function Feed({
             <button 
               type="button" 
               onClick={() => setComposerMode(composerMode === 'github' ? 'text' : 'github')}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', color: composerMode === 'github' ? 'var(--color-primary)' : '#888888', fontSize: '0.8rem' }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', color: composerMode === 'github' ? 'var(--color-primary)' : 'var(--color-text-muted-light)', fontSize: '0.8rem' }}
               aria-label="Link Github repo"
             >
               <Github size={15} />
@@ -204,27 +208,27 @@ export default function Feed({
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {[1, 2].map(n => (
-            <div key={n} className="feed-post-card animate-pulse" style={{ height: '180px', display: 'flex', flexDirection: 'column', gap: '16px', background: 'rgba(255,255,255,0.02)' }}>
+            <div key={n} className="feed-post-card animate-pulse" style={{ height: '180px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.04)', width: '48px', height: '48px', flexShrink: 0 }} />
+                <div style={{ borderRadius: '50%', backgroundColor: '#f0f0eb', width: '48px', height: '48px', flexShrink: 0 }} />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flexGrow: 1 }}>
-                  <div style={{ height: '14px', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: '4px', width: '30%' }} />
-                  <div style={{ height: '10px', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: '4px', width: '20%' }} />
+                  <div style={{ height: '14px', backgroundColor: '#f0f0eb', borderRadius: '4px', width: '30%' }} />
+                  <div style={{ height: '10px', backgroundColor: '#f0f0eb', borderRadius: '4px', width: '20%' }} />
                 </div>
               </div>
-              <div style={{ height: '12px', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: '4px', width: '100%' }} />
-              <div style={{ height: '12px', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: '4px', width: '80%' }} />
+              <div style={{ height: '12px', backgroundColor: '#f0f0eb', borderRadius: '4px', width: '100%' }} />
+              <div style={{ height: '12px', backgroundColor: '#f0f0eb', borderRadius: '4px', width: '80%' }} />
             </div>
           ))}
         </div>
       ) : filteredFeedPosts.length === 0 ? (
-        /* Empty State with hero.png Motif */
+        /* Empty State */
         <div style={{ textAlign: 'center', padding: '60px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-          <div className="animate-bounce" style={{ width: '120px', height: '120px', overflow: 'hidden' }}>
-            <img src="/hero.png" alt="Hero proof of work card illustration" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          <div style={{ width: '120px', height: '120px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-primary-soft)' }}>
+            <Sparkles size={48} style={{ color: 'var(--color-primary)' }} />
           </div>
-          <h3 className="text-white font-medium" style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem' }}>No proof-of-work posts found</h3>
-          <p className="text-gray-400 text-sm max-w-sm">There are no learning activities registered under this tag or matching your search. Be the first to share an update!</p>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', color: 'var(--color-text-strong)', fontWeight: 500 }}>No proof-of-work posts found</h3>
+          <p style={{ color: 'var(--color-text-muted-light)', fontSize: '0.9rem', maxWidth: '380px' }}>There are no learning activities registered under this tag or matching your search. Be the first to share an update!</p>
         </div>
       ) : (
         /* Posts Feed */
@@ -258,12 +262,12 @@ export default function Feed({
               {post.codeSnippet && (
                 <div style={{ position: 'relative' }}>
                   <pre style={{
-                    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    backgroundColor: '#0f172a',
+                    border: '1px solid #1f2937',
                     borderRadius: '8px',
                     padding: '12px 16px',
                     fontSize: '0.8rem',
-                    color: '#34d399',
+                    color: '#a7f3d0',
                     fontFamily: 'monospace',
                     overflowX: 'auto'
                   }}>
@@ -309,7 +313,7 @@ export default function Feed({
                     transform: post.hasLiked ? 'scale(1.05)' : 'scale(1)'
                   }}
                 >
-                  <Heart size={16} fill={post.hasLiked ? '#f43f5e' : 'none'} style={{ marginRight: '4px' }} />
+                  <Heart size={16} fill={post.hasLiked ? '#e11d48' : 'none'} style={{ marginRight: '4px' }} />
                   {post.likes} Applauds
                 </button>
                 

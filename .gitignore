@@ -11,6 +11,8 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.local
 
 # Editor directories and files
 .vscode/*
@@ -22,3 +24,19 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Claude Code local settings and skill submodules (not part of app source)
+.claude/settings.local.json
+skills/
+
+# Unused legacy assets superseded during the theme rework
+/1.png
+public/1.png
+public/hero.png
+public/cowboy_cat.jpg
+public/icons.svg
+public/yolo.jpg
+public/pull_shark.jpg
+src/assets/hero.png
+src/assets/react.svg
+src/assets/vite.svg

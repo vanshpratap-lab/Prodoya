@@ -8,14 +8,14 @@ interface AvatarProps {
 }
 
 const colorPresets = [
-  '#a78bfa', // soft purple
-  '#f87171', // red
-  '#fbbf24', // amber
-  '#34d399', // emerald
-  '#60a5fa', // blue
-  '#f472b6', // pink
-  '#fb7185', // rose
-  '#22d3ee', // cyan
+  '#7c3aed', // purple
+  '#dc2626', // red
+  '#d97706', // amber
+  '#059669', // emerald
+  '#2563eb', // blue
+  '#db2777', // pink
+  '#e11d48', // rose
+  '#0891b2', // cyan
 ];
 
 export default function Avatar({ name, avatarUrl, size = 48, className = '' }: AvatarProps) {
@@ -44,7 +44,7 @@ export default function Avatar({ name, avatarUrl, size = 48, className = '' }: A
           flexShrink: 0,
           width: `${size}px`, 
           height: `${size}px`, 
-          border: '2px solid rgba(255,255,255,0.08)',
+          border: '2px solid rgba(15, 23, 42, 0.06)',
           display: 'inline-block'
         }}
       >
@@ -84,7 +84,7 @@ export default function Avatar({ name, avatarUrl, size = 48, className = '' }: A
         height: `${size}px`, 
         backgroundColor: bgColor,
         fontSize: size >= 76 ? '2rem' : (size <= 40 ? '0.85rem' : '1.1rem'),
-        border: '2px solid rgba(255,255,255,0.1)'
+        border: '2px solid rgba(255, 255, 255, 0.7)'
       }}
     >
       {firstLetter}

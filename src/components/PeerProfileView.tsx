@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { ArrowLeft, Github, Award, ShieldCheck, Lock, Flame, Trophy, Sparkles, Code, Cpu, Layers, UserPlus, UserCheck } from 'lucide-react';
+import { ArrowLeft, Github, Award, ShieldCheck, Lock, Flame, Trophy, Sparkles, Code, Cpu, Layers, UserPlus, UserCheck, GitPullRequest } from 'lucide-react';
 import Avatar from './Avatar';
 
 interface Connection {
-  id: number;
+  id: string;
   name: string;
   role: string;
   college: string;
@@ -14,7 +14,7 @@ interface Connection {
 interface PeerProfileViewProps {
   peer: Connection;
   onBack: () => void;
-  onToggleConnect: (id: number) => void;
+  onToggleConnect: (id: string) => void;
 }
 
 export default function PeerProfileView({ peer, onBack, onToggleConnect }: PeerProfileViewProps) {
@@ -47,12 +47,12 @@ export default function PeerProfileView({ peer, onBack, onToggleConnect }: PeerP
 
   const getCellColor = (level: number) => {
     switch (level) {
-      case 0: return '#161b22'; 
-      case 1: return '#0e4429'; 
-      case 2: return '#006d32'; 
-      case 3: return '#26a641'; 
-      case 4: return '#39d353'; 
-      default: return '#161b22';
+      case 0: return '#ebedf0';
+      case 1: return '#9be9a8';
+      case 2: return '#40c463';
+      case 3: return '#30a14e';
+      case 4: return '#216e39';
+      default: return '#ebedf0';
     }
   };
 
@@ -151,7 +151,7 @@ export default function PeerProfileView({ peer, onBack, onToggleConnect }: PeerP
       <div 
         className="profile-card-widget relative overflow-hidden"
         style={{ 
-          background: 'linear-gradient(135deg, rgba(30, 30, 30, 0.6), rgba(20, 20, 20, 0.85))',
+          background: 'linear-gradient(135deg, var(--color-surface), var(--color-surface-elevated))',
           border: '1px solid var(--color-dark-border)',
           borderRadius: '20px',
           padding: '24px',
@@ -170,11 +170,11 @@ export default function PeerProfileView({ peer, onBack, onToggleConnect }: PeerP
             size={84} 
           />
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', color: '#ffffff', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', color: 'var(--color-text-strong)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
               {peer.name}
-              <ShieldCheck size={20} style={{ color: '#34d399' }} />
+              <ShieldCheck size={20} style={{ color: '#059669' }} />
             </h2>
-            <p style={{ fontSize: '0.9rem', color: '#ffffff', fontWeight: 500 }}>
+            <p style={{ fontSize: '0.9rem', color: 'var(--color-text-strong)', fontWeight: 500 }}>
               {peer.role} • {peer.college}
             </p>
             <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted-light)' }}>
@@ -229,30 +229,29 @@ export default function PeerProfileView({ peer, onBack, onToggleConnect }: PeerP
       {/* GitHub Contributions Grid */}
       <div 
         style={{ 
-          backgroundColor: 'rgba(24, 24, 26, 0.94)', 
-          border: '1px solid var(--color-dark-border)', 
-          borderRadius: '20px', 
+          backgroundColor: 'var(--color-surface)',
+          border: '1px solid var(--color-dark-border)',
+          borderRadius: '20px',
           padding: '24px',
           boxShadow: 'var(--shadow-md)',
           display: 'flex',
           flexDirection: 'column',
-          gap: '16px',
-          backdropFilter: 'blur(20px)'
+          gap: '16px'
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-          <h3 style={{ fontSize: '1.1rem', color: '#ffffff', margin: 0, fontWeight: 600 }}>
+          <h3 style={{ fontSize: '1.1rem', color: 'var(--color-text-strong)', margin: 0, fontWeight: 600 }}>
             Contributions in the last year
           </h3>
           
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: '2px', backgroundColor: 'rgba(255,255,255,0.05)', padding: '2px', borderRadius: '8px' }}>
+            <div style={{ display: 'flex', gap: '2px', backgroundColor: '#e5e7eb', padding: '2px', borderRadius: '8px' }}>
               <button 
                 type="button" 
                 onClick={() => setSelectedYear(2026)}
                 style={{ 
                   background: selectedYear === 2026 ? 'var(--color-primary)' : 'none', 
-                  color: selectedYear === 2026 ? '#121214' : 'var(--color-text-muted-light)',
+                  color: selectedYear === 2026 ? 'var(--color-on-primary)' : 'var(--color-text-muted-light)',
                   border: 'none', 
                   fontSize: '0.78rem', 
                   fontWeight: 700, 
@@ -268,7 +267,7 @@ export default function PeerProfileView({ peer, onBack, onToggleConnect }: PeerP
                 onClick={() => setSelectedYear(2025)}
                 style={{ 
                   background: selectedYear === 2025 ? 'var(--color-primary)' : 'none', 
-                  color: selectedYear === 2025 ? '#121214' : 'var(--color-text-muted-light)',
+                  color: selectedYear === 2025 ? 'var(--color-on-primary)' : 'var(--color-text-muted-light)',
                   border: 'none', 
                   fontSize: '0.78rem', 
                   fontWeight: 700, 
@@ -326,11 +325,11 @@ export default function PeerProfileView({ peer, onBack, onToggleConnect }: PeerP
               <a href="#" style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>Learn how we count contributions</a>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <span>Less</span>
-                <div style={{ width: '10px', height: '10px', backgroundColor: '#161b22', borderRadius: '2px' }} />
-                <div style={{ width: '10px', height: '10px', backgroundColor: '#0e4429', borderRadius: '2px' }} />
-                <div style={{ width: '10px', height: '10px', backgroundColor: '#006d32', borderRadius: '2px' }} />
-                <div style={{ width: '10px', height: '10px', backgroundColor: '#26a641', borderRadius: '2px' }} />
-                <div style={{ width: '10px', height: '10px', backgroundColor: '#39d353', borderRadius: '2px' }} />
+                <div style={{ width: '10px', height: '10px', backgroundColor: '#ebedf0', borderRadius: '2px' }} />
+                <div style={{ width: '10px', height: '10px', backgroundColor: '#9be9a8', borderRadius: '2px' }} />
+                <div style={{ width: '10px', height: '10px', backgroundColor: '#40c463', borderRadius: '2px' }} />
+                <div style={{ width: '10px', height: '10px', backgroundColor: '#30a14e', borderRadius: '2px' }} />
+                <div style={{ width: '10px', height: '10px', backgroundColor: '#216e39', borderRadius: '2px' }} />
                 <span>More</span>
               </div>
             </div>
@@ -346,53 +345,52 @@ export default function PeerProfileView({ peer, onBack, onToggleConnect }: PeerP
         {/* Progression & Streak Metrics Panel */}
         <div 
           style={{ 
-            backgroundColor: 'rgba(24, 24, 26, 0.94)', 
-            border: '1px solid var(--color-dark-border)', 
-            borderRadius: '20px', 
+            backgroundColor: 'var(--color-surface)',
+            border: '1px solid var(--color-dark-border)',
+            borderRadius: '20px',
             padding: '24px',
             boxShadow: 'var(--shadow-md)',
             display: 'flex',
             flexDirection: 'column',
-            gap: '20px',
-            backdropFilter: 'blur(20px)'
+            gap: '20px'
           }}
         >
-          <h3 style={{ fontSize: '1.1rem', color: '#ffffff', margin: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h3 style={{ fontSize: '1.1rem', color: 'var(--color-text-strong)', margin: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Sparkles className="text-amber-400" size={20} />
             Progression & Streaks
           </h3>
           
-          <hr style={{ border: 'none', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }} />
+          <hr style={{ border: 'none', borderTop: '1px solid var(--color-dark-border)' }} />
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', backgroundColor: 'var(--color-surface-elevated)', borderRadius: '12px', border: '1px solid var(--color-dark-border)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <Flame className="text-orange-500" size={22} />
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontSize: '0.85rem', color: '#ffffff', fontWeight: 600 }}>Active Streak</span>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--color-text-strong)', fontWeight: 600 }}>Active Streak</span>
                   <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted-light)' }}>Commit consistency</span>
                 </div>
               </div>
               <span style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f97316' }}>{peer.name.length * 2} Days</span>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', backgroundColor: 'var(--color-surface-elevated)', borderRadius: '12px', border: '1px solid var(--color-dark-border)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <Trophy className="text-yellow-500" size={22} />
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontSize: '0.85rem', color: '#ffffff', fontWeight: 600 }}>Platform Rank</span>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--color-text-strong)', fontWeight: 600 }}>Platform Rank</span>
                   <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted-light)' }}>Standings group</span>
                 </div>
               </div>
               <span style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-primary)' }}>Top {peer.name.length > 10 ? '5%' : '12%'}</span>
             </div>
 
-            <div style={{ padding: '14px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ padding: '14px', backgroundColor: 'var(--color-surface-elevated)', borderRadius: '12px', border: '1px solid var(--color-dark-border)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
                 <span style={{ color: 'var(--color-text-muted-light)', fontWeight: 600 }}>Experience Points</span>
-                <span style={{ color: '#ffffff', fontWeight: 700 }}>{peer.name.length * 1200} XP</span>
+                <span style={{ color: 'var(--color-text-strong)', fontWeight: 700 }}>{peer.name.length * 1200} XP</span>
               </div>
-              <div style={{ height: '8px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden', position: 'relative' }}>
+              <div style={{ height: '8px', backgroundColor: '#e5e7eb', borderRadius: '4px', overflow: 'hidden', position: 'relative' }}>
                 <div style={{ width: '65%', height: '100%', backgroundColor: 'var(--color-primary)', borderRadius: '4px' }} />
               </div>
             </div>
@@ -402,32 +400,31 @@ export default function PeerProfileView({ peer, onBack, onToggleConnect }: PeerP
         {/* Skill Mastery Levels */}
         <div 
           style={{ 
-            backgroundColor: 'rgba(24, 24, 26, 0.94)', 
-            border: '1px solid var(--color-dark-border)', 
-            borderRadius: '20px', 
+            backgroundColor: 'var(--color-surface)',
+            border: '1px solid var(--color-dark-border)',
+            borderRadius: '20px',
             padding: '24px',
             boxShadow: 'var(--shadow-md)',
             display: 'flex',
             flexDirection: 'column',
-            gap: '20px',
-            backdropFilter: 'blur(20px)'
+            gap: '20px'
           }}
         >
-          <h3 style={{ fontSize: '1.1rem', color: '#ffffff', margin: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h3 style={{ fontSize: '1.1rem', color: 'var(--color-text-strong)', margin: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Cpu className="text-purple-400" size={20} />
             Skill Mastery Metrics
           </h3>
           
-          <hr style={{ border: 'none', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }} />
+          <hr style={{ border: 'none', borderTop: '1px solid var(--color-dark-border)' }} />
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {skills.map((skill, index) => (
               <div key={index} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#eeeeee' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--color-text-light)' }}>
                   <span>{skill.name}</span>
                   <span style={{ color: skill.color, fontWeight: 700 }}>{skill.val}</span>
                 </div>
-                <div style={{ height: '6px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{ height: '6px', backgroundColor: '#e5e7eb', borderRadius: '3px', overflow: 'hidden' }}>
                   <div style={{ width: `${skill.num}%`, height: '100%', backgroundColor: skill.color }} />
                 </div>
               </div>
@@ -443,23 +440,22 @@ export default function PeerProfileView({ peer, onBack, onToggleConnect }: PeerP
         {/* Tech Stack Panel */}
         <div 
           style={{ 
-            backgroundColor: 'rgba(24, 24, 26, 0.94)', 
-            border: '1px solid var(--color-dark-border)', 
-            borderRadius: '20px', 
+            backgroundColor: 'var(--color-surface)',
+            border: '1px solid var(--color-dark-border)',
+            borderRadius: '20px',
             padding: '24px',
             boxShadow: 'var(--shadow-md)',
             display: 'flex',
             flexDirection: 'column',
-            gap: '16px',
-            backdropFilter: 'blur(20px)'
+            gap: '16px'
           }}
         >
-          <h3 style={{ fontSize: '1.1rem', color: '#ffffff', margin: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h3 style={{ fontSize: '1.1rem', color: 'var(--color-text-strong)', margin: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Code className="text-purple-400" size={20} />
             Stack & Tech Focus
           </h3>
 
-          <hr style={{ border: 'none', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }} />
+          <hr style={{ border: 'none', borderTop: '1px solid var(--color-dark-border)' }} />
 
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             {(peer.role.toLowerCase().includes('ai') ? ['Python', 'PyTorch', 'NumPy', 'TensorFlow', 'CUDA', 'Docker'] : ['React', 'TypeScript', 'Node.js', 'Next.js', 'Vite', 'Three.js']).map((tech, idx) => (
@@ -467,9 +463,9 @@ export default function PeerProfileView({ peer, onBack, onToggleConnect }: PeerP
                 key={idx}
                 style={{ 
                   fontSize: '0.8rem', 
-                  backgroundColor: 'rgba(167, 139, 250, 0.06)', 
-                  border: '1.5px solid rgba(167, 139, 250, 0.18)', 
-                  color: '#c084fc', 
+                  backgroundColor: 'var(--color-primary-soft)',
+                  border: '1px solid rgba(124, 58, 237, 0.25)',
+                  color: 'var(--color-primary)',
                   padding: '6px 14px', 
                   borderRadius: '20px', 
                   fontWeight: 600
@@ -491,32 +487,31 @@ export default function PeerProfileView({ peer, onBack, onToggleConnect }: PeerP
         {/* Milestone Timeline */}
         <div 
           style={{ 
-            backgroundColor: 'rgba(24, 24, 26, 0.94)', 
-            border: '1px solid var(--color-dark-border)', 
-            borderRadius: '20px', 
+            backgroundColor: 'var(--color-surface)',
+            border: '1px solid var(--color-dark-border)',
+            borderRadius: '20px',
             padding: '24px',
             boxShadow: 'var(--shadow-md)',
             display: 'flex',
             flexDirection: 'column',
-            gap: '16px',
-            backdropFilter: 'blur(20px)'
+            gap: '16px'
           }}
         >
-          <h3 style={{ fontSize: '1.1rem', color: '#ffffff', margin: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h3 style={{ fontSize: '1.1rem', color: 'var(--color-text-strong)', margin: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Layers className="text-purple-400" size={20} />
             Recent Milestones
           </h3>
 
-          <hr style={{ border: 'none', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }} />
+          <hr style={{ border: 'none', borderTop: '1px solid var(--color-dark-border)' }} />
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', position: 'relative', paddingLeft: '20px' }}>
-            <div style={{ position: 'absolute', left: '7px', top: '4px', bottom: '4px', width: '2px', backgroundColor: 'rgba(255,255,255,0.06)' }} />
+            <div style={{ position: 'absolute', left: '7px', top: '4px', bottom: '4px', width: '2px', backgroundColor: '#e5e7eb' }} />
 
             {milestones.map((milestone, idx) => (
               <div key={idx} style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <div style={{ position: 'absolute', left: '-18px', top: '4px', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--color-primary)' }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem' }}>
-                  <span style={{ fontWeight: 700, color: '#ffffff' }}>{milestone.title}</span>
+                  <span style={{ fontWeight: 700, color: 'var(--color-text-strong)' }}>{milestone.title}</span>
                   <span style={{ color: 'var(--color-text-muted-light)' }}>{milestone.time}</span>
                 </div>
                 <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted-light)' }}>{milestone.desc}</span>
@@ -530,18 +525,17 @@ export default function PeerProfileView({ peer, onBack, onToggleConnect }: PeerP
       {/* Achievements Section */}
       <div 
         style={{ 
-          backgroundColor: 'rgba(24, 24, 26, 0.94)', 
-          border: '1px solid var(--color-dark-border)', 
-          borderRadius: '20px', 
+          backgroundColor: 'var(--color-surface)',
+          border: '1px solid var(--color-dark-border)',
+          borderRadius: '20px',
           padding: '24px',
           boxShadow: 'var(--shadow-md)',
           display: 'flex',
           flexDirection: 'column',
-          gap: '16px',
-          backdropFilter: 'blur(20px)'
+          gap: '16px'
         }}
       >
-        <h3 style={{ fontSize: '1.1rem', color: '#ffffff', margin: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <h3 style={{ fontSize: '1.1rem', color: 'var(--color-text-strong)', margin: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Award className="text-amber-400" size={20} />
           Achievements
         </h3>
@@ -551,23 +545,23 @@ export default function PeerProfileView({ peer, onBack, onToggleConnect }: PeerP
           {/* Badge 1: Pull Shark (Earned / Active) */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
             <div 
-              style={{ 
-                width: '72px', 
-                height: '72px', 
-                borderRadius: '50%', 
+              style={{
+                width: '72px',
+                height: '72px',
+                borderRadius: '50%',
                 border: '2.5px solid var(--color-primary)',
                 overflow: 'hidden',
-                boxShadow: '0 0 15px rgba(167, 139, 250, 0.4)',
-                position: 'relative'
+                boxShadow: '0 0 15px rgba(124, 58, 237, 0.25)',
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'linear-gradient(135deg, var(--color-primary-soft), var(--color-surface-elevated))',
               }}
             >
-              <img 
-                src="/pull_shark.jpg" 
-                alt="Pull Shark Badge" 
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-              />
+              <GitPullRequest size={30} style={{ color: 'var(--color-primary)' }} />
             </div>
-            <span style={{ fontSize: '0.78rem', color: '#ffffff', fontWeight: 600 }}>Pull Shark</span>
+            <span style={{ fontSize: '0.78rem', color: 'var(--color-text-strong)', fontWeight: 600 }}>Pull Shark</span>
             <span style={{ fontSize: '0.65rem', color: 'var(--color-primary)', fontWeight: 600 }}>Active</span>
           </div>
 
@@ -578,17 +572,17 @@ export default function PeerProfileView({ peer, onBack, onToggleConnect }: PeerP
                 width: '72px', 
                 height: '72px', 
                 borderRadius: '50%', 
-                border: '2px dashed rgba(255, 255, 255, 0.2)',
+                border: '2px dashed #d1d5db',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: 'rgba(255, 255, 255, 0.02)'
+                backgroundColor: '#f3f4f6'
               }}
             >
               <Lock size={20} className="text-gray-400" />
             </div>
-            <span style={{ fontSize: '0.78rem', color: '#aaaaaa', fontWeight: 600 }}>YOLO</span>
-            <span style={{ fontSize: '0.65rem', color: '#888888' }}>Locked</span>
+            <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted-light)', fontWeight: 600 }}>YOLO</span>
+            <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Locked</span>
           </div>
 
           {/* Badge 3: Quickdraw (Locked) */}
@@ -598,17 +592,17 @@ export default function PeerProfileView({ peer, onBack, onToggleConnect }: PeerP
                 width: '72px', 
                 height: '72px', 
                 borderRadius: '50%', 
-                border: '2px dashed rgba(255, 255, 255, 0.2)',
+                border: '2px dashed #d1d5db',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: 'rgba(255, 255, 255, 0.02)'
+                backgroundColor: '#f3f4f6'
               }}
             >
               <Lock size={20} className="text-gray-400" />
             </div>
-            <span style={{ fontSize: '0.78rem', color: '#aaaaaa', fontWeight: 600 }}>Quickdraw</span>
-            <span style={{ fontSize: '0.65rem', color: '#888888' }}>Locked</span>
+            <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted-light)', fontWeight: 600 }}>Quickdraw</span>
+            <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Locked</span>
           </div>
 
         </div>
@@ -623,7 +617,7 @@ export default function PeerProfileView({ peer, onBack, onToggleConnect }: PeerP
             padding: '12px 32px',
             borderRadius: '24px',
             border: '1.5px solid var(--color-primary)',
-            backgroundColor: 'rgba(167, 139, 250, 0.05)',
+            backgroundColor: 'var(--color-primary-soft)',
             color: 'var(--color-primary)',
             fontSize: '0.9rem',
             fontWeight: 700,

@@ -1,0 +1,57 @@
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY environment variables.');
+}
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+export interface Profile {
+  id: string;
+  full_name: string;
+  college: string;
+  role: string;
+  avatar_url: string;
+  bio: string;
+  github_url: string;
+  tech_stack: { label: string; percent: number }[];
+  points: number;
+  streak_days: number;
+  last_post_at: string | null;
+  created_at: string;
+}
+
+export interface Post {
+  id: number;
+  author_id: string;
+  content: string;
+  tags: string[];
+  ai_difficulty: 'beginner' | 'intermediate' | 'advanced';
+  ai_points: number;
+  code_snippet: string | null;
+  github_url: string | null;
+  project_showcase_url: string | null;
+  created_at: string;
+  author: Profile;
+  like_count: number;
+  has_liked: boolean;
+}
+
+export interface ChatChannel {
+  id: number;
+  name: string;
+  emoji: string;
+  description: string;
+}
+
+export interface DbMessage {
+  id: number;
+  chat_id: number;
+  sender_id: string;
+  text: string;
+  created_at: string;
+  sender: Profile;
+}

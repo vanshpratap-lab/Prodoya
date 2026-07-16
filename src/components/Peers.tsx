@@ -4,7 +4,7 @@ import Avatar from './Avatar';
 import PeerProfileView from './PeerProfileView';
 
 interface Connection {
-  id: number;
+  id: string;
   name: string;
   role: string;
   college: string;
@@ -14,7 +14,7 @@ interface Connection {
 
 interface PeersProps {
   connections: Connection[];
-  handleToggleConnect: (id: number) => void;
+  handleToggleConnect: (id: string) => void;
   searchQuery: string;
 }
 
@@ -68,22 +68,22 @@ export default function Peers({ connections, handleToggleConnect, searchQuery }:
         /* Loading Skeletons */
         <div className="network-grid-container">
           {[1, 2, 3].map(n => (
-            <div key={n} className="network-user-card animate-pulse" style={{ height: '190px', background: 'rgba(255,255,255,0.02)' }}>
-              <div style={{ height: '60px', backgroundColor: 'rgba(255,255,255,0.03)' }} />
-              <div style={{ width: '68px', height: '68px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.04)', margin: '-34px auto 8px auto' }} />
-              <div style={{ height: '14px', backgroundColor: 'rgba(255,255,255,0.04)', margin: '8px 24px', borderRadius: '4px' }} />
-              <div style={{ height: '10px', backgroundColor: 'rgba(255,255,255,0.04)', margin: '0 36px 16px 36px', borderRadius: '4px' }} />
+            <div key={n} className="network-user-card animate-pulse" style={{ height: '190px' }}>
+              <div style={{ height: '60px', backgroundColor: '#f0f0eb' }} />
+              <div style={{ width: '68px', height: '68px', borderRadius: '50%', backgroundColor: '#e5e7eb', margin: '-34px auto 8px auto' }} />
+              <div style={{ height: '14px', backgroundColor: '#e5e7eb', margin: '8px 24px', borderRadius: '4px' }} />
+              <div style={{ height: '10px', backgroundColor: '#e5e7eb', margin: '0 36px 16px 36px', borderRadius: '4px' }} />
             </div>
           ))}
         </div>
       ) : filteredConnections.length === 0 ? (
-        /* Empty State with hero.png */
+        /* Empty State */
         <div style={{ textAlign: 'center', padding: '60px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-          <div className="animate-bounce" style={{ width: '120px', height: '120px', overflow: 'hidden' }}>
-            <img src="/hero.png" alt="Hero proof of work card illustration" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          <div style={{ width: '120px', height: '120px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-primary-soft)' }}>
+            <UserPlus size={48} style={{ color: 'var(--color-primary)' }} />
           </div>
-          <h3 className="text-white font-medium" style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem' }}>No matching peers found</h3>
-          <p className="text-gray-400 text-sm max-w-sm">Try search filters, tech stack tags, or browse the complete list of mentors.</p>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', color: 'var(--color-text-strong)', fontWeight: 500 }}>No matching peers found</h3>
+          <p style={{ color: 'var(--color-text-muted-light)', fontSize: '0.9rem', maxWidth: '380px' }}>Try search filters, tech stack tags, or browse the complete list of mentors.</p>
         </div>
       ) : (
         /* Connections Grid */
@@ -160,9 +160,9 @@ export default function Peers({ connections, handleToggleConnect, searchQuery }:
                     className={`pagination-btn ${currentPage === pageNum ? 'active' : ''}`}
                     onClick={() => setCurrentPage(pageNum)}
                     style={{
-                      backgroundColor: currentPage === pageNum ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.05)',
-                      color: currentPage === pageNum ? '#121214' : '#ffffff',
-                      border: 'none',
+                      backgroundColor: currentPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
+                      color: currentPage === pageNum ? 'var(--color-on-primary)' : 'var(--color-text-light)',
+                      border: '1px solid var(--color-dark-border)',
                       borderRadius: '8px',
                       width: '32px',
                       height: '32px',

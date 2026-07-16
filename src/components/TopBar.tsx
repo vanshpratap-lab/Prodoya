@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import { Menu, Search, Bell } from 'lucide-react';
 import Avatar from './Avatar';
+import type { Profile } from '../lib/supabase';
 
 interface TopBarProps {
-  activeTab: 'home' | 'network' | 'rank' | 'messages' | 'profile';
-  setActiveTab: (tab: 'home' | 'network' | 'rank' | 'messages' | 'profile') => void;
+  activeTab: 'home' | 'network' | 'rank' | 'messages' | 'profile' | 'tools';
+  setActiveTab: (tab: 'home' | 'network' | 'rank' | 'messages' | 'profile' | 'tools') => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   setNotificationsOpen: (open: boolean) => void;
   setSidebarOpen: (open: (prev: boolean) => boolean) => void;
   notificationsCount: number;
+  profile: Profile;
+  onSignOut: () => void;
 }
 
 export default function TopBar({
@@ -20,6 +23,8 @@ export default function TopBar({
   setNotificationsOpen,
   setSidebarOpen,
   notificationsCount,
+  profile,
+  onSignOut,
 }: TopBarProps) {
   const [searchFocused, setSearchFocused] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -27,14 +32,16 @@ export default function TopBar({
   return (
     <header className="top-bar">
       <div className="top-bar-logo-area">
-        <button 
-          className="top-bar-hamburger"
-          type="button"
-          onClick={() => setSidebarOpen(prev => !prev)}
-          aria-label="Toggle navigation sidebar"
-        >
-          <Menu size={22} />
-        </button>
+        {activeTab !== 'tools' && (
+          <button 
+            className="top-bar-hamburger"
+            type="button"
+            onClick={() => setSidebarOpen(prev => !prev)}
+            aria-label="Toggle navigation sidebar"
+          >
+            <Menu size={22} />
+          </button>
+        )}
         
         <div 
           className={`top-bar-search-wrapper ${searchFocused ? 'focused' : ''}`}
@@ -95,8 +102,8 @@ export default function TopBar({
       <div className="top-bar-profile-area" style={{ gap: '16px', position: 'relative' }}>
         <button 
           onClick={() => setNotificationsOpen(true)}
-          className="relative p-2 rounded-full hover:bg-white/10 transition-colors"
-          style={{ position: 'relative', background: 'none', border: 'none', color: '#ffffff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          className="relative p-2 rounded-full transition-colors"
+          style={{ position: 'relative', background: 'none', border: 'none', color: 'var(--color-text-light)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           aria-label="Open notifications drawer"
         >
           <Bell size={22} />
@@ -111,7 +118,7 @@ export default function TopBar({
                 alignItems: 'center',
                 justifyContent: 'center',
                 backgroundColor: 'var(--color-primary)',
-                color: '#121214',
+                color: 'var(--color-on-primary)',
                 borderRadius: '50%',
                 top: '-2px',
                 right: '-2px',
@@ -130,10 +137,10 @@ export default function TopBar({
           onClick={() => setProfileMenuOpen(prev => !prev)}
           aria-label="Open user menu"
         >
-          <Avatar 
-            name="Emma Watson" 
-            avatarUrl="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150" 
-            size={40} 
+          <Avatar
+            name={profile.full_name}
+            avatarUrl={profile.avatar_url}
+            size={40}
           />
         </button>
 
@@ -159,8 +166,8 @@ export default function TopBar({
                 top: '56px',
                 right: 0,
                 width: '280px',
-                backgroundColor: 'rgba(18, 18, 20, 0.98)',
-                border: '1.5px solid var(--color-dark-border)',
+                backgroundColor: 'var(--color-surface)',
+                border: '1px solid var(--color-dark-border)',
                 borderRadius: '16px',
                 padding: '16px',
                 boxShadow: 'var(--shadow-lg)',
@@ -168,21 +175,20 @@ export default function TopBar({
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '12px',
-                color: '#ffffff',
+                color: 'var(--color-text-light)',
                 textAlign: 'left',
-                backdropFilter: 'blur(20px)',
                 animation: 'slideUp 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards'
               }}
             >
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <Avatar 
-                  name="Emma Watson" 
-                  avatarUrl="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150" 
-                  size={48} 
+                <Avatar
+                  name={profile.full_name}
+                  avatarUrl={profile.avatar_url}
+                  size={48}
                 />
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>Emma Watson</span>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted-light)' }}>Lead Product Architect</span>
+                  <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{profile.full_name}</span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted-light)' }}>{profile.role}</span>
                 </div>
               </div>
 
@@ -205,27 +211,27 @@ export default function TopBar({
                 >
                   View profile
                 </button>
-                <button 
-                  type="button" 
-                  onClick={() => { setProfileMenuOpen(false); alert('Start Verification flow triggered!'); }}
-                  style={{ 
-                    flex: 1, 
-                    padding: '8px 12px', 
-                    borderRadius: '20px', 
-                    border: 'none', 
-                    backgroundColor: 'var(--color-primary)', 
-                    color: '#121214', 
-                    fontSize: '0.78rem', 
-                    fontWeight: 700, 
+                <button
+                  type="button"
+                  onClick={() => { setProfileMenuOpen(false); setActiveTab('tools'); }}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    borderRadius: '20px',
+                    border: 'none',
+                    backgroundColor: 'var(--color-primary)',
+                    color: 'var(--color-on-primary)',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
                     cursor: 'pointer',
                     transition: 'all 0.2s ease-in-out'
                   }}
                 >
-                  Verify now
+                  Tools
                 </button>
               </div>
 
-              <hr style={{ border: 'none', borderTop: '1px solid rgba(255, 255, 255, 0.08)', margin: '4px 0' }} />
+              <hr style={{ border: 'none', borderTop: '1px solid var(--color-dark-border)', margin: '4px 0' }} />
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted-light)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
@@ -241,26 +247,26 @@ export default function TopBar({
                   </button>
                   <button 
                     onClick={() => { setProfileMenuOpen(false); alert('Settings & Privacy clicked!'); }}
-                    style={{ background: 'none', border: 'none', color: '#dddddd', textAlign: 'left', cursor: 'pointer', padding: '4px 0', transition: 'color 0.2s ease' }}
+                    style={{ background: 'none', border: 'none', color: 'var(--color-text-light)', textAlign: 'left', cursor: 'pointer', padding: '4px 0', transition: 'color 0.2s ease' }}
                   >
                     Settings & Privacy
                   </button>
                   <button 
                     onClick={() => { setProfileMenuOpen(false); alert('Help Center clicked!'); }}
-                    style={{ background: 'none', border: 'none', color: '#dddddd', textAlign: 'left', cursor: 'pointer', padding: '4px 0' }}
+                    style={{ background: 'none', border: 'none', color: 'var(--color-text-light)', textAlign: 'left', cursor: 'pointer', padding: '4px 0' }}
                   >
                     Help
                   </button>
                   <button 
                     onClick={() => { setProfileMenuOpen(false); alert('Language selection clicked!'); }}
-                    style={{ background: 'none', border: 'none', color: '#dddddd', textAlign: 'left', cursor: 'pointer', padding: '4px 0' }}
+                    style={{ background: 'none', border: 'none', color: 'var(--color-text-light)', textAlign: 'left', cursor: 'pointer', padding: '4px 0' }}
                   >
                     Language
                   </button>
                 </div>
               </div>
 
-              <hr style={{ border: 'none', borderTop: '1px solid rgba(255, 255, 255, 0.08)', margin: '4px 0' }} />
+              <hr style={{ border: 'none', borderTop: '1px solid var(--color-dark-border)', margin: '4px 0' }} />
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted-light)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
@@ -269,24 +275,24 @@ export default function TopBar({
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.85rem' }}>
                   <button 
                     onClick={() => { setProfileMenuOpen(false); alert('Posts & Activity clicked!'); }}
-                    style={{ background: 'none', border: 'none', color: '#dddddd', textAlign: 'left', cursor: 'pointer', padding: '4px 0' }}
+                    style={{ background: 'none', border: 'none', color: 'var(--color-text-light)', textAlign: 'left', cursor: 'pointer', padding: '4px 0' }}
                   >
                     Posts & Activity
                   </button>
                   <button 
                     onClick={() => { setProfileMenuOpen(false); alert('Job Posting Account clicked!'); }}
-                    style={{ background: 'none', border: 'none', color: '#dddddd', textAlign: 'left', cursor: 'pointer', padding: '4px 0' }}
+                    style={{ background: 'none', border: 'none', color: 'var(--color-text-light)', textAlign: 'left', cursor: 'pointer', padding: '4px 0' }}
                   >
                     Job Posting Account
                   </button>
                 </div>
               </div>
 
-              <hr style={{ border: 'none', borderTop: '1px solid rgba(255, 255, 255, 0.08)', margin: '4px 0' }} />
+              <hr style={{ border: 'none', borderTop: '1px solid var(--color-dark-border)', margin: '4px 0' }} />
 
-              <button 
-                onClick={() => { setProfileMenuOpen(false); alert('Sign out triggered successfully!'); }}
-                style={{ background: 'none', border: 'none', color: '#fb7185', textAlign: 'left', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 700, padding: '4px 0' }}
+              <button
+                onClick={() => { setProfileMenuOpen(false); onSignOut(); }}
+                style={{ background: 'none', border: 'none', color: 'var(--color-danger)', textAlign: 'left', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 700, padding: '4px 0' }}
               >
                 Sign out
               </button>
