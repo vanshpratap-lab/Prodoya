@@ -8,6 +8,7 @@ import Rankings from './components/Rankings';
 import Chat from './components/Chat';
 import NotificationsDrawer from './components/NotificationsDrawer';
 import ProfileView from './components/ProfileView';
+import ToolsView from './components/ToolsView';
 import Auth from './components/Auth';
 import { useAuth } from './lib/AuthContext';
 import { usePosts, useConnections, useCommunityChat, useNotifications, useLeaderboard } from './lib/hooks';
@@ -18,7 +19,7 @@ const POINTS_MAP = { beginner: 10, intermediate: 20, advanced: 35 } as const;
 export default function App() {
   const { session, user, profile, loading: authLoading, refreshProfile, signOut } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'home' | 'network' | 'rank' | 'messages' | 'profile'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'network' | 'rank' | 'messages' | 'profile' | 'tools'>('home');
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -152,44 +153,50 @@ export default function App() {
 
       {/* Main Container Wrapper */}
       <div className="main-wrapper">
-        {/* Sidebar Navigation & Profile Card */}
-        <Sidebar profileStats={profileStats} sidebarOpen={sidebarOpen} profile={profile} />
+        {/* Sidebar Navigation & Profile Card (hidden on the Tools workspace) */}
+        {activeTab !== 'tools' && (
+          <Sidebar profileStats={profileStats} sidebarOpen={sidebarOpen} profile={profile} />
+        )}
 
-        {/* Content View Switcher */}
-        <main
-          className={`content-area ${activeTab === 'messages' ? 'messages-tab-active' : ''} ${activeTab === 'rank' ? 'rank-tab-active' : ''} ${activeTab === 'profile' ? 'profile-tab-active' : ''}`}
-        >
-          {activeTab === 'home' && (
-            <Feed
-              feedPosts={feedPosts}
-              handleLikePost={handleLikePost}
-              handleCreatePost={handleCreatePost}
-              searchQuery={searchQuery}
-              feedFilter={feedFilter}
-              setFeedFilter={setFeedFilter}
-              currentUser={profile}
-            />
-          )}
+        {activeTab === 'tools' ? (
+          <ToolsView profile={profile} setActiveTab={setActiveTab} />
+        ) : (
+          /* Content View Switcher */
+          <main
+            className={`content-area ${activeTab === 'messages' ? 'messages-tab-active' : ''} ${activeTab === 'rank' ? 'rank-tab-active' : ''} ${activeTab === 'profile' ? 'profile-tab-active' : ''}`}
+          >
+            {activeTab === 'home' && (
+              <Feed
+                feedPosts={feedPosts}
+                handleLikePost={handleLikePost}
+                handleCreatePost={handleCreatePost}
+                searchQuery={searchQuery}
+                feedFilter={feedFilter}
+                setFeedFilter={setFeedFilter}
+                currentUser={profile}
+              />
+            )}
 
-          {activeTab === 'network' && (
-            <Peers connections={connections} handleToggleConnect={handleToggleConnect} searchQuery={searchQuery} />
-          )}
+            {activeTab === 'network' && (
+              <Peers connections={connections} handleToggleConnect={handleToggleConnect} searchQuery={searchQuery} />
+            )}
 
-          {activeTab === 'rank' && <Rankings ranks={ranks} currentUserId={user.id} streakDays={profile.streak_days} />}
+            {activeTab === 'rank' && <Rankings ranks={ranks} currentUserId={user.id} streakDays={profile.streak_days} />}
 
-          {activeTab === 'messages' && (
-            <Chat
-              chats={chats}
-              selectedChatId={selectedChatId}
-              setSelectedChatId={setSelectedChatId}
-              typeMessage={typeMessage}
-              setTypeMessage={setTypeMessage}
-              handleSendMessage={handleSendMessage}
-            />
-          )}
+            {activeTab === 'messages' && (
+              <Chat
+                chats={chats}
+                selectedChatId={selectedChatId}
+                setSelectedChatId={setSelectedChatId}
+                typeMessage={typeMessage}
+                setTypeMessage={setTypeMessage}
+                handleSendMessage={handleSendMessage}
+              />
+            )}
 
-          {activeTab === 'profile' && <ProfileView profile={profile} />}
-        </main>
+            {activeTab === 'profile' && <ProfileView profile={profile} />}
+          </main>
+        )}
       </div>
 
       {/* Slide-out Notification Drawer */}

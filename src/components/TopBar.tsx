@@ -4,8 +4,8 @@ import Avatar from './Avatar';
 import type { Profile } from '../lib/supabase';
 
 interface TopBarProps {
-  activeTab: 'home' | 'network' | 'rank' | 'messages' | 'profile';
-  setActiveTab: (tab: 'home' | 'network' | 'rank' | 'messages' | 'profile') => void;
+  activeTab: 'home' | 'network' | 'rank' | 'messages' | 'profile' | 'tools';
+  setActiveTab: (tab: 'home' | 'network' | 'rank' | 'messages' | 'profile' | 'tools') => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   setNotificationsOpen: (open: boolean) => void;
@@ -32,14 +32,16 @@ export default function TopBar({
   return (
     <header className="top-bar">
       <div className="top-bar-logo-area">
-        <button 
-          className="top-bar-hamburger"
-          type="button"
-          onClick={() => setSidebarOpen(prev => !prev)}
-          aria-label="Toggle navigation sidebar"
-        >
-          <Menu size={22} />
-        </button>
+        {activeTab !== 'tools' && (
+          <button 
+            className="top-bar-hamburger"
+            type="button"
+            onClick={() => setSidebarOpen(prev => !prev)}
+            aria-label="Toggle navigation sidebar"
+          >
+            <Menu size={22} />
+          </button>
+        )}
         
         <div 
           className={`top-bar-search-wrapper ${searchFocused ? 'focused' : ''}`}
@@ -209,23 +211,23 @@ export default function TopBar({
                 >
                   View profile
                 </button>
-                <button 
-                  type="button" 
-                  onClick={() => { setProfileMenuOpen(false); alert('Start Verification flow triggered!'); }}
-                  style={{ 
-                    flex: 1, 
-                    padding: '8px 12px', 
-                    borderRadius: '20px', 
-                    border: 'none', 
+                <button
+                  type="button"
+                  onClick={() => { setProfileMenuOpen(false); setActiveTab('tools'); }}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    borderRadius: '20px',
+                    border: 'none',
                     backgroundColor: 'var(--color-primary)',
                     color: 'var(--color-on-primary)',
-                    fontSize: '0.78rem', 
-                    fontWeight: 700, 
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
                     cursor: 'pointer',
                     transition: 'all 0.2s ease-in-out'
                   }}
                 >
-                  Verify now
+                  Tools
                 </button>
               </div>
 
