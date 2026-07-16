@@ -1,31 +1,22 @@
-import { useState, useEffect } from 'react';
-import { Github, Sparkles, Terminal, Heart, ExternalLink } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Sparkles, Video, Image as ImageIcon, X, Loader2 } from 'lucide-react';
 import Avatar from './Avatar';
 import type { Profile } from '../lib/supabase';
-
-interface FeedPost {
-  id: number;
-  author: string;
-  avatar: string;
-  college: string;
-  role: string;
-  content: string;
-  tags: string[];
-  aiDifficulty: 'beginner' | 'intermediate' | 'advanced';
-  aiPoints: number;
-  likes: number;
-  hasLiked: boolean;
-  time: string;
-  githubUrl?: string;
-  projectShowcase?: string;
-  codeSnippet?: string;
-  githubRepoName?: string;
-}
+import { uploadPostMedia } from '../lib/hooks';
+import PostCard, { type FeedPost } from './PostCard';
 
 interface FeedProps {
   feedPosts: FeedPost[];
   handleLikePost: (id: number) => void;
-  handleCreatePost: (text: string, difficulty: 'beginner' | 'intermediate' | 'advanced', category: string, extraData?: { codeSnippet?: string; githubUrl?: string }) => void;
+  handleRepostPost: (id: number) => void;
+  onCommentAdded: (id: number) => void;
+  handleDeletePost: (id: number) => void;
+  handleCreatePost: (
+    text: string,
+    difficulty: 'beginner' | 'intermediate' | 'advanced',
+    category: string,
+    extraData?: { imageUrl?: string; videoUrl?: string },
+  ) => void;
   searchQuery: string;
   feedFilter: 'all' | 'aiml' | 'webdev' | 'opensource' | 'hackathons';
   setFeedFilter: (filter: 'all' | 'aiml' | 'webdev' | 'opensource' | 'hackathons') => void;
@@ -35,6 +26,9 @@ interface FeedProps {
 export default function Feed({
   feedPosts,
   handleLikePost,
+  handleRepostPost,
+  onCommentAdded,
+  handleDeletePost,
   handleCreatePost,
   searchQuery,
   feedFilter,
@@ -44,44 +38,79 @@ export default function Feed({
   const [newPostText, setNewPostText] = useState('');
   const [difficulty, setDifficulty] = useState<'beginner' | 'intermediate' | 'advanced'>('intermediate');
   const [category, setCategory] = useState('webdev');
-  
-  // Composer extra modes: 'text' | 'code' | 'github'
-  const [composerMode, setComposerMode] = useState<'text' | 'code' | 'github'>('text');
-  const [codeSnippet, setCodeSnippet] = useState('');
-  const [githubUrl, setGithubUrl] = useState('');
+  const [composerExpanded, setComposerExpanded] = useState(false);
 
-  // Local loading skeleton simulation on tab mount
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState<'image' | 'video' | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 600);
     return () => clearTimeout(timer);
   }, [feedFilter]);
 
+  const pickImage = () => imageInputRef.current?.click();
+  const pickVideo = () => videoInputRef.current?.click();
+
+  const onImageSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setUploadError(null);
+    setUploading('image');
+    setComposerExpanded(true);
+    try {
+      const url = await uploadPostMedia(currentUser.id, file);
+      setImageUrl(url);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Failed to upload image.');
+    } finally {
+      setUploading(null);
+    }
+  };
+
+  const onVideoSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setUploadError(null);
+    setUploading('video');
+    setComposerExpanded(true);
+    try {
+      const url = await uploadPostMedia(currentUser.id, file);
+      setVideoUrl(url);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Failed to upload video.');
+    } finally {
+      setUploading(null);
+    }
+  };
+
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPostText.trim()) return;
+    if (!newPostText.trim() || uploading) return;
 
-    handleCreatePost(
-      newPostText,
-      difficulty,
-      category,
-      {
-        codeSnippet: composerMode === 'code' ? codeSnippet : undefined,
-        githubUrl: composerMode === 'github' ? githubUrl : undefined
-      }
-    );
+    handleCreatePost(newPostText, difficulty, category, {
+      imageUrl: imageUrl ?? undefined,
+      videoUrl: videoUrl ?? undefined,
+    });
 
     setNewPostText('');
-    setCodeSnippet('');
-    setGithubUrl('');
-    setComposerMode('text');
+    setImageUrl(null);
+    setVideoUrl(null);
+    setComposerExpanded(false);
   };
 
   const filteredFeedPosts = feedPosts.filter(post => {
-    const matchesSearch = post.author.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    const matchesSearch = post.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           post.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           post.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-    
+
     if (!matchesSearch) return false;
 
     if (feedFilter === 'all') return true;
@@ -100,9 +129,9 @@ export default function Feed({
         <span className="feed-filter-title">Proof-of-work Feed</span>
         <div className="feed-filter-tabs">
           {(['all', 'aiml', 'webdev', 'opensource', 'hackathons'] as const).map(f => (
-            <button 
+            <button
               key={f}
-              type="button" 
+              type="button"
               className={`feed-filter-btn ${feedFilter === f ? 'active' : ''}`}
               onClick={() => setFeedFilter(f)}
             >
@@ -112,95 +141,133 @@ export default function Feed({
         </div>
       </div>
 
-      {/* Composer Adaptations */}
+      {/* Composer */}
       <form className="feed-create-post-widget" onSubmit={onSubmit}>
         <div className="feed-create-input-row">
           <div className="feed-create-avatar">
-            <Avatar
-              name={currentUser.full_name}
-              avatarUrl={currentUser.avatar_url}
-              size={42}
-            />
+            <Avatar name={currentUser.full_name} avatarUrl={currentUser.avatar_url} size={42} />
           </div>
-          <textarea 
+          <textarea
             className="feed-create-textarea"
             placeholder="Share a project update, code snippet, or AI learning milestone..."
             value={newPostText}
             onChange={(e) => setNewPostText(e.target.value)}
+            onFocus={() => setComposerExpanded(true)}
             required
+            style={composerExpanded ? { height: '96px' } : undefined}
           />
         </div>
 
-        {/* Monospace Code Preview Box */}
-        {composerMode === 'code' && (
-          <div style={{ padding: '0 0 0 54px' }}>
-            <textarea
-              className="font-mono text-xs w-full rounded-lg p-3 outline-none h-28"
-              style={{ backgroundColor: '#0f172a', color: '#a7f3d0', border: '1px solid #1f2937', width: '100%', padding: '12px', borderRadius: '8px', fontFamily: 'monospace', fontSize: '0.8rem' }}
-              placeholder="// Paste your code snippet here..."
-              value={codeSnippet}
-              onChange={(e) => setCodeSnippet(e.target.value)}
-            />
-          </div>
-        )}
-
-        {/* Github Repository Input Card */}
-        {composerMode === 'github' && (
-          <div style={{ padding: '0 0 0 54px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', backgroundColor: 'var(--color-surface-elevated)', border: '1px solid var(--color-dark-border)', borderRadius: '8px', padding: '8px', gap: '8px' }}>
-              <Github size={16} style={{ color: 'var(--color-text-muted-light)' }} />
-              <input
-                type="url"
-                style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: '0.8rem', color: '#0369a1', flexGrow: 1 }}
-                placeholder="https://github.com/username/repository"
-                value={githubUrl}
-                onChange={(e) => setGithubUrl(e.target.value)}
-              />
+        {/* Image preview */}
+        {(uploading === 'image' || imageUrl) && (
+          <div style={{ padding: '0 0 0 54px', position: 'relative' }}>
+            <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--color-dark-border)', maxWidth: '320px' }}>
+              {uploading === 'image' ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '140px', background: 'var(--color-surface-elevated)', gap: '8px', color: 'var(--color-text-muted-light)', fontSize: '0.82rem' }}>
+                  <Loader2 size={16} className="animate-spin" />
+                  Uploading image…
+                </div>
+              ) : (
+                <>
+                  <img src={imageUrl ?? undefined} alt="Attachment preview" style={{ width: '100%', maxHeight: '220px', objectFit: 'cover', display: 'block' }} />
+                  <button
+                    type="button"
+                    onClick={() => setImageUrl(null)}
+                    aria-label="Remove image"
+                    style={{ position: 'absolute', top: '8px', right: '8px', width: '26px', height: '26px', borderRadius: '50%', border: 'none', background: 'rgba(15, 23, 42, 0.65)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                  >
+                    <X size={14} />
+                  </button>
+                </>
+              )}
             </div>
           </div>
         )}
 
-        <div className="feed-create-controls">
-          <div className="feed-create-options">
-            <button 
-              type="button" 
-              onClick={() => setComposerMode(composerMode === 'code' ? 'text' : 'code')}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', color: composerMode === 'code' ? 'var(--color-primary)' : 'var(--color-text-muted-light)', fontSize: '0.8rem' }}
-              aria-label="Add code snippet"
-            >
-              <Terminal size={15} />
-              Code
-            </button>
-            <button 
-              type="button" 
-              onClick={() => setComposerMode(composerMode === 'github' ? 'text' : 'github')}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', color: composerMode === 'github' ? 'var(--color-primary)' : 'var(--color-text-muted-light)', fontSize: '0.8rem' }}
-              aria-label="Link Github repo"
-            >
-              <Github size={15} />
-              GitHub
-            </button>
-            <select 
-              className="feed-create-select" 
-              value={difficulty} 
-              onChange={(e) => setDifficulty(e.target.value as any)}
-              style={{ marginLeft: '8px' }}
-            >
-              <option value="beginner">Beginner (+10 pts)</option>
-              <option value="intermediate">Intermediate (+20 pts)</option>
-              <option value="advanced">Advanced (+35 pts)</option>
-            </select>
-            <select 
-              className="feed-create-select"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-            >
-              <option value="webdev">WebDev</option>
-              <option value="aiml">AI/ML</option>
-              <option value="opensource">OpenSource</option>
-            </select>
+        {/* Video preview */}
+        {(uploading === 'video' || videoUrl) && (
+          <div style={{ padding: '0 0 0 54px', position: 'relative' }}>
+            <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--color-dark-border)', maxWidth: '320px' }}>
+              {uploading === 'video' ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '140px', background: 'var(--color-surface-elevated)', gap: '8px', color: 'var(--color-text-muted-light)', fontSize: '0.82rem' }}>
+                  <Loader2 size={16} className="animate-spin" />
+                  Uploading video…
+                </div>
+              ) : (
+                <>
+                  <video src={videoUrl ?? undefined} controls style={{ width: '100%', maxHeight: '220px', display: 'block', background: '#000' }} />
+                  <button
+                    type="button"
+                    onClick={() => setVideoUrl(null)}
+                    aria-label="Remove video"
+                    style={{ position: 'absolute', top: '8px', right: '8px', width: '26px', height: '26px', borderRadius: '50%', border: 'none', background: 'rgba(15, 23, 42, 0.65)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                  >
+                    <X size={14} />
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-          <button type="submit" className="feed-post-btn">Post Update</button>
+        )}
+
+        {uploadError && (
+          <div style={{ padding: '0 0 0 54px', fontSize: '0.8rem', color: 'var(--color-danger)' }}>{uploadError}</div>
+        )}
+
+        <input ref={imageInputRef} type="file" accept="image/*" onChange={onImageSelected} style={{ display: 'none' }} />
+        <input ref={videoInputRef} type="file" accept="video/*" onChange={onVideoSelected} style={{ display: 'none' }} />
+
+        <div className="feed-create-controls" style={{ flexWrap: 'wrap', gap: '10px' }}>
+          <div className="feed-create-options" style={{ flexWrap: 'wrap', rowGap: '8px' }}>
+            <button
+              type="button"
+              onClick={pickVideo}
+              disabled={uploading !== null}
+              className="feed-composer-icon-btn"
+              style={{ color: videoUrl ? '#059669' : 'var(--color-text-muted-light)' }}
+              aria-label="Add a video"
+            >
+              <Video size={17} style={{ color: '#059669' }} />
+              Video
+            </button>
+            <button
+              type="button"
+              onClick={pickImage}
+              disabled={uploading !== null}
+              className="feed-composer-icon-btn"
+              aria-label="Add a photo"
+            >
+              <ImageIcon size={17} style={{ color: '#2563eb' }} />
+              Photo
+            </button>
+          </div>
+
+          {composerExpanded && (
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', animation: 'fadeIn 0.2s ease' }}>
+              <select
+                className="feed-create-select"
+                value={difficulty}
+                onChange={(e) => setDifficulty(e.target.value as any)}
+              >
+                <option value="beginner">Beginner (+10 pts)</option>
+                <option value="intermediate">Intermediate (+20 pts)</option>
+                <option value="advanced">Advanced (+35 pts)</option>
+              </select>
+              <select
+                className="feed-create-select"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              >
+                <option value="webdev">WebDev</option>
+                <option value="aiml">AI/ML</option>
+                <option value="opensource">OpenSource</option>
+              </select>
+            </div>
+          )}
+
+          <button type="submit" className="feed-post-btn" disabled={uploading !== null} style={{ marginLeft: 'auto' }}>
+            Post Update
+          </button>
         </div>
       </form>
 
@@ -232,108 +299,17 @@ export default function Feed({
         </div>
       ) : (
         /* Posts Feed */
-        filteredFeedPosts.map(post => {
-          const isJustCreated = post.time === 'Just now';
-          return (
-            <div 
-              className={`feed-post-card ${isJustCreated ? 'border-primary shadow-lg scale-[1.01]' : ''}`} 
-              key={post.id}
-              style={{
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                animation: isJustCreated ? 'pulseNewPost 1s ease-in-out' : 'none'
-              }}
-            >
-              <div className="feed-post-header">
-                <div className="feed-post-author-box">
-                  <Avatar name={post.author} avatarUrl={post.avatar} size={48} />
-                  <div className="feed-post-author-details">
-                    <span className="feed-post-author-name">{post.author}</span>
-                    <span className="feed-post-author-sub">🏫 {post.college} • {post.role}</span>
-                  </div>
-                </div>
-                <span className="feed-post-time">{post.time}</span>
-              </div>
-
-              <div className="feed-post-body">
-                {post.content}
-              </div>
-
-              {/* Code Snippet monospaced block if present */}
-              {post.codeSnippet && (
-                <div style={{ position: 'relative' }}>
-                  <pre style={{
-                    backgroundColor: '#0f172a',
-                    border: '1px solid #1f2937',
-                    borderRadius: '8px',
-                    padding: '12px 16px',
-                    fontSize: '0.8rem',
-                    color: '#a7f3d0',
-                    fontFamily: 'monospace',
-                    overflowX: 'auto'
-                  }}>
-                    <code>{post.codeSnippet}</code>
-                  </pre>
-                </div>
-              )}
-
-              {post.projectShowcase && (
-                <div style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--color-dark-border)' }}>
-                  <img src={post.projectShowcase} alt="Project Showcase" style={{ width: '100%', maxHeight: '250px', objectFit: 'cover' }} />
-                </div>
-              )}
-
-              <div className="feed-post-tags">
-                {post.tags.map((tag, idx) => (
-                  <span className="feed-post-tag-pill" key={idx}>{tag}</span>
-                ))}
-              </div>
-
-              <div className="feed-post-ai-badge-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div 
-                  className={`feed-post-ai-badge ${post.aiDifficulty} ${isJustCreated ? 'animate-bounce' : ''}`}
-                  style={{
-                    animation: isJustCreated ? 'shimmerAI 1.2s ease-in-out infinite' : 'none'
-                  }}
-                >
-                  <Sparkles size={13} style={{ marginRight: '4px' }} />
-                  🤖 AI: {post.aiDifficulty.toUpperCase()} | +{post.aiPoints} pts
-                </div>
-                <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted-light)' }}>
-                  🔥 Growth Points Verified
-                </span>
-              </div>
-
-              <div className="feed-post-actions">
-                <button 
-                  type="button" 
-                  className={`feed-action-btn ${post.hasLiked ? 'liked' : ''}`}
-                  onClick={() => handleLikePost(post.id)}
-                  style={{
-                    transition: 'all 0.2s ease-in-out',
-                    transform: post.hasLiked ? 'scale(1.05)' : 'scale(1)'
-                  }}
-                >
-                  <Heart size={16} fill={post.hasLiked ? '#e11d48' : 'none'} style={{ marginRight: '4px' }} />
-                  {post.likes} Applauds
-                </button>
-                
-                {post.githubUrl && (
-                  <a 
-                    href={post.githubUrl} 
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="feed-action-btn github"
-                    style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                  >
-                    <Github size={16} />
-                    View Codebase
-                    <ExternalLink size={12} />
-                  </a>
-                )}
-              </div>
-            </div>
-          );
-        })
+        filteredFeedPosts.map(post => (
+          <PostCard
+            key={post.feedKey}
+            post={post}
+            currentUser={currentUser}
+            onLike={handleLikePost}
+            onRepost={handleRepostPost}
+            onCommentAdded={onCommentAdded}
+            onDelete={handleDeletePost}
+          />
+        ))
       )}
     </div>
   );

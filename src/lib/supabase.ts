@@ -34,10 +34,23 @@ export interface Post {
   code_snippet: string | null;
   github_url: string | null;
   project_showcase_url: string | null;
+  video_url: string | null;
   created_at: string;
   author: Profile;
   like_count: number;
   has_liked: boolean;
+  repost_count: number;
+  has_reposted: boolean;
+  comment_count: number;
+}
+
+export interface PostComment {
+  id: number;
+  post_id: number;
+  author_id: string;
+  text: string;
+  created_at: string;
+  author: Profile;
 }
 
 export interface ChatChannel {

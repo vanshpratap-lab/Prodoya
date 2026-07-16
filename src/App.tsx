@@ -8,6 +8,7 @@ import Rankings from './components/Rankings';
 import Chat from './components/Chat';
 import NotificationsDrawer from './components/NotificationsDrawer';
 import ProfileView from './components/ProfileView';
+import Activity from './components/Activity';
 import ToolsView from './components/ToolsView';
 import Auth from './components/Auth';
 import { useAuth } from './lib/AuthContext';
@@ -19,7 +20,7 @@ const POINTS_MAP = { beginner: 10, intermediate: 20, advanced: 35 } as const;
 export default function App() {
   const { session, user, profile, loading: authLoading, refreshProfile, signOut } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'home' | 'network' | 'rank' | 'messages' | 'profile' | 'tools'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'network' | 'rank' | 'messages' | 'profile' | 'tools' | 'activity'>('home');
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -28,7 +29,7 @@ export default function App() {
   const [typeMessage, setTypeMessage] = useState('');
 
   const userId = user?.id;
-  const { posts, createPost, toggleLike } = usePosts(userId);
+  const { feedItems, createPost, toggleLike, toggleRepost, incrementCommentCount, deletePost } = usePosts(userId);
   const { connections, toggleConnect, connectionCount } = useConnections(userId);
   const { chats, sendMessage } = useCommunityChat(userId);
   const { notifications, addNotification } = useNotifications(userId);
@@ -56,8 +57,11 @@ export default function App() {
     return <Auth />;
   }
 
-  const feedPosts = posts.map(p => ({
+  const feedPosts = feedItems.map(p => ({
     id: p.id,
+    feedKey: p.feed_key,
+    repostedBy: p.reposted_by ?? undefined,
+    authorId: p.author_id,
     author: p.author?.full_name ?? 'Unknown',
     avatar: p.author?.avatar_url ?? '',
     college: p.author?.college ?? '',
@@ -68,17 +72,21 @@ export default function App() {
     aiPoints: p.ai_points,
     likes: p.like_count,
     hasLiked: p.has_liked,
-    time: formatRelativeTime(p.created_at),
+    reposts: p.repost_count,
+    hasReposted: p.has_reposted,
+    commentCount: p.comment_count,
+    time: formatRelativeTime(p.activity_at),
     githubUrl: p.github_url ?? undefined,
     codeSnippet: p.code_snippet ?? undefined,
     projectShowcase: p.project_showcase_url ?? undefined,
+    videoUrl: p.video_url ?? undefined,
   }));
 
   const handleCreatePost = async (
     text: string,
     difficulty: 'beginner' | 'intermediate' | 'advanced',
     category: string,
-    extraData?: { codeSnippet?: string; githubUrl?: string },
+    extraData?: { imageUrl?: string; videoUrl?: string },
   ) => {
     const points = POINTS_MAP[difficulty];
     try {
@@ -87,8 +95,8 @@ export default function App() {
         ai_difficulty: difficulty,
         ai_points: points,
         tags: [`#${category}`, '#streakUpdate', '#buildInPublic'],
-        code_snippet: extraData?.codeSnippet,
-        github_url: extraData?.githubUrl,
+        project_showcase_url: extraData?.imageUrl,
+        video_url: extraData?.videoUrl,
       });
       await Promise.all([refreshProfile(), refetchLeaderboard()]);
       await addNotification(
@@ -103,6 +111,18 @@ export default function App() {
   const handleLikePost = (id: number) => {
     toggleLike(id);
   };
+
+  const handleRepostPost = (id: number) => {
+    toggleRepost(id);
+  };
+
+  const handleDeletePost = async (id: number) => {
+    await deletePost(id);
+    await Promise.all([refreshProfile(), refetchLeaderboard()]);
+  };
+
+  // The signed-in user's own authored posts (original entries only, newest first).
+  const myPosts = feedPosts.filter(p => p.authorId === user.id && !p.repostedBy);
 
   const handleToggleConnect = (id: string) => {
     toggleConnect(id);
@@ -160,6 +180,20 @@ export default function App() {
 
         {activeTab === 'tools' ? (
           <ToolsView profile={profile} setActiveTab={setActiveTab} />
+        ) : activeTab === 'activity' ? (
+          <main className="content-area">
+            <Activity
+              variant="full"
+              currentUser={profile}
+              myPosts={myPosts}
+              followerCount={connectionCount}
+              onLike={handleLikePost}
+              onRepost={handleRepostPost}
+              onCommentAdded={incrementCommentCount}
+              onDelete={handleDeletePost}
+              onBack={() => setActiveTab('profile')}
+            />
+          </main>
         ) : (
           /* Content View Switcher */
           <main
@@ -169,6 +203,9 @@ export default function App() {
               <Feed
                 feedPosts={feedPosts}
                 handleLikePost={handleLikePost}
+                handleRepostPost={handleRepostPost}
+                onCommentAdded={incrementCommentCount}
+                handleDeletePost={handleDeletePost}
                 handleCreatePost={handleCreatePost}
                 searchQuery={searchQuery}
                 feedFilter={feedFilter}
@@ -194,7 +231,19 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'profile' && <ProfileView profile={profile} />}
+            {activeTab === 'profile' && (
+              <ProfileView
+                profile={profile}
+                myPosts={myPosts}
+                followerCount={connectionCount}
+                onLike={handleLikePost}
+                onRepost={handleRepostPost}
+                onCommentAdded={incrementCommentCount}
+                onDelete={handleDeletePost}
+                onShowAllActivity={() => setActiveTab('activity')}
+                onCreatePost={() => setActiveTab('home')}
+              />
+            )}
           </main>
         )}
       </div>

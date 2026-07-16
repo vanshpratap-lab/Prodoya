@@ -1,11 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase, type Post, type Profile, type ChatChannel, type DbMessage } from './supabase';
+import { supabase, type Post, type Profile, type ChatChannel, type DbMessage, type PostComment } from './supabase';
 import { formatRelativeTime, formatClockTime } from './time';
 
 // ─── Posts / Feed ──────────────────────────────────────────────────────────
 
+export interface RepostEntry {
+  post_id: number;
+  user_id: string;
+  created_at: string;
+  reposter_name: string;
+}
+
 export function usePosts(currentUserId: string | undefined) {
   const [posts, setPosts] = useState<Post[]>([]);
+  const [repostEntries, setRepostEntries] = useState<RepostEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchPosts = useCallback(async () => {
@@ -22,9 +30,29 @@ export function usePosts(currentUserId: string | undefined) {
     }
 
     const postIds = postsData.map((p: any) => p.id);
-    const { data: likesData } = postIds.length
-      ? await supabase.from('post_likes').select('post_id, user_id').in('post_id', postIds)
-      : { data: [] as { post_id: number; user_id: string }[] };
+    const [{ data: likesData }, { data: repostsData }, { data: commentsData }] = postIds.length
+      ? await Promise.all([
+          supabase.from('post_likes').select('post_id, user_id').in('post_id', postIds),
+          supabase.from('post_reposts').select('post_id, user_id, created_at').in('post_id', postIds),
+          supabase.from('post_comments').select('post_id').in('post_id', postIds),
+        ])
+      : [{ data: [] as { post_id: number; user_id: string }[] }, { data: [] as { post_id: number; user_id: string; created_at: string }[] }, { data: [] as { post_id: number }[] }];
+
+    // Resolve reposter names so reposts can surface as real feed activity.
+    const reposterIds = [...new Set((repostsData || []).map((r: any) => r.user_id))];
+    const { data: reposterProfiles } = reposterIds.length
+      ? await supabase.from('profiles').select('id, full_name').in('id', reposterIds)
+      : { data: [] as { id: string; full_name: string }[] };
+    const reposterNames = new Map<string, string>((reposterProfiles || []).map(p => [p.id, p.full_name]));
+
+    setRepostEntries(
+      (repostsData || []).map((r: any) => ({
+        post_id: r.post_id,
+        user_id: r.user_id,
+        created_at: r.created_at,
+        reposter_name: reposterNames.get(r.user_id) || 'Someone',
+      })),
+    );
 
     const likeCounts = new Map<number, number>();
     const likedByMe = new Set<number>();
@@ -33,11 +61,26 @@ export function usePosts(currentUserId: string | undefined) {
       if (l.user_id === currentUserId) likedByMe.add(l.post_id);
     });
 
+    const repostCounts = new Map<number, number>();
+    const repostedByMe = new Set<number>();
+    (repostsData || []).forEach(r => {
+      repostCounts.set(r.post_id, (repostCounts.get(r.post_id) || 0) + 1);
+      if (r.user_id === currentUserId) repostedByMe.add(r.post_id);
+    });
+
+    const commentCounts = new Map<number, number>();
+    (commentsData || []).forEach(c => {
+      commentCounts.set(c.post_id, (commentCounts.get(c.post_id) || 0) + 1);
+    });
+
     setPosts(
       postsData.map((p: any) => ({
         ...p,
         like_count: likeCounts.get(p.id) || 0,
         has_liked: likedByMe.has(p.id),
+        repost_count: repostCounts.get(p.id) || 0,
+        has_reposted: repostedByMe.has(p.id),
+        comment_count: commentCounts.get(p.id) || 0,
       })),
     );
     setLoading(false);
@@ -54,6 +97,8 @@ export function usePosts(currentUserId: string | undefined) {
     tags: string[];
     code_snippet?: string;
     github_url?: string;
+    project_showcase_url?: string;
+    video_url?: string;
   }) => {
     if (!currentUserId) throw new Error('Not signed in.');
     const { error } = await supabase.from('posts').insert({
@@ -64,6 +109,8 @@ export function usePosts(currentUserId: string | undefined) {
       ai_points: input.ai_points,
       code_snippet: input.code_snippet?.trim() || null,
       github_url: input.github_url?.trim() || null,
+      project_showcase_url: input.project_showcase_url || null,
+      video_url: input.video_url || null,
     });
     if (error) throw error;
     await supabase.rpc('award_post_points', { p_points: input.ai_points });
@@ -83,7 +130,109 @@ export function usePosts(currentUserId: string | undefined) {
     if (error) await fetchPosts();
   };
 
-  return { posts, loading, createPost, toggleLike, refetch: fetchPosts };
+  const toggleRepost = async (postId: number) => {
+    if (!currentUserId) return;
+    setPosts(prev =>
+      prev.map(p =>
+        p.id === postId
+          ? { ...p, has_reposted: !p.has_reposted, repost_count: p.repost_count + (p.has_reposted ? -1 : 1) }
+          : p,
+      ),
+    );
+    await supabase.rpc('toggle_post_repost', { p_post_id: postId });
+    // Refetch so the repost surfaces (or disappears) as a real feed activity entry.
+    await fetchPosts();
+  };
+
+  const incrementCommentCount = (postId: number) => {
+    setPosts(prev => prev.map(p => (p.id === postId ? { ...p, comment_count: p.comment_count + 1 } : p)));
+  };
+
+  const deletePost = async (postId: number) => {
+    if (!currentUserId) return;
+    // Optimistically remove the post and any repost activity referencing it.
+    setPosts(prev => prev.filter(p => p.id !== postId));
+    setRepostEntries(prev => prev.filter(r => r.post_id !== postId));
+    // RLS allows deletion only when auth.uid() = author_id, so this is a no-op for non-owners.
+    const { error } = await supabase.from('posts').delete().eq('id', postId);
+    if (error) await fetchPosts();
+  };
+
+  // Merge original posts and repost activity into one LinkedIn-style feed timeline.
+  const feedItems: FeedItem[] = posts.map(p => ({
+    ...p,
+    feed_key: `post-${p.id}`,
+    reposted_by: null,
+    activity_at: p.created_at,
+  }));
+  repostEntries.forEach(r => {
+    const original = posts.find(p => p.id === r.post_id);
+    if (!original) return;
+    feedItems.push({
+      ...original,
+      feed_key: `repost-${r.post_id}-${r.user_id}`,
+      reposted_by: r.reposter_name,
+      activity_at: r.created_at,
+    });
+  });
+  feedItems.sort((a, b) => new Date(b.activity_at).getTime() - new Date(a.activity_at).getTime());
+
+  return { posts, feedItems, loading, createPost, toggleLike, toggleRepost, incrementCommentCount, deletePost, refetch: fetchPosts };
+}
+
+export interface FeedItem extends Post {
+  feed_key: string;
+  reposted_by: string | null;
+  activity_at: string;
+}
+
+// ─── Post uploads (images / video) ─────────────────────────────────────────
+
+export async function uploadPostMedia(userId: string, file: File): Promise<string> {
+  const ext = file.name.split('.').pop() || 'bin';
+  const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error } = await supabase.storage.from('post-media').upload(path, file, {
+    cacheControl: '3600',
+    upsert: false,
+  });
+  if (error) throw error;
+  const { data } = supabase.storage.from('post-media').getPublicUrl(path);
+  return data.publicUrl;
+}
+
+// ─── Post comments ──────────────────────────────────────────────────────────
+
+export function usePostComments(postId: number, enabled: boolean) {
+  const [comments, setComments] = useState<PostComment[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchComments = useCallback(async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from('post_comments')
+      .select('*, author:profiles!post_comments_author_id_fkey(*)')
+      .eq('post_id', postId)
+      .order('created_at', { ascending: true });
+    setComments((data || []) as PostComment[]);
+    setLoading(false);
+  }, [postId]);
+
+  useEffect(() => {
+    if (enabled) fetchComments();
+  }, [enabled, fetchComments]);
+
+  const addComment = async (authorId: string, text: string) => {
+    if (!text.trim()) return;
+    const { error } = await supabase.from('post_comments').insert({
+      post_id: postId,
+      author_id: authorId,
+      text: text.trim(),
+    });
+    if (error) throw error;
+    await fetchComments();
+  };
+
+  return { comments, loading, addComment, refetch: fetchComments };
 }
 
 // ─── Peers / Connections ───────────────────────────────────────────────────

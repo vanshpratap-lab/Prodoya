@@ -1,4 +1,4 @@
-import { Github } from 'lucide-react';
+import { GraduationCap, Flame, AlertTriangle } from 'lucide-react';
 import Avatar from './Avatar';
 import type { Profile } from '../lib/supabase';
 
@@ -30,8 +30,9 @@ export default function Sidebar({ profileStats, sidebarOpen, profile }: SidebarP
         <h2 className="profile-name">{profile.full_name}</h2>
         <p className="profile-role">{profile.role}</p>
         {profile.college && (
-          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted-light)', marginBottom: '8px' }}>
-            🏫 {profile.college}
+          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted-light)', marginBottom: '8px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+            <GraduationCap size={13} />
+            {profile.college}
           </div>
         )}
 
@@ -41,7 +42,7 @@ export default function Sidebar({ profileStats, sidebarOpen, profile }: SidebarP
             {profileStats.streaks}
           </span>
           <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted-light)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '6px' }}>
-            Days Streak <span style={{ filter: 'none' }}>🔥</span>
+            Days Streak <Flame size={13} style={{ color: '#f97316' }} />
           </span>
           <div style={{
             marginTop: '8px',
@@ -56,7 +57,8 @@ export default function Sidebar({ profileStats, sidebarOpen, profile }: SidebarP
             alignItems: 'center',
             gap: '4px'
           }}>
-            ⚠️ Streak at risk! Post today
+            <AlertTriangle size={12} />
+            Streak at risk! Post today
           </div>
         </div>
         
@@ -101,41 +103,6 @@ export default function Sidebar({ profileStats, sidebarOpen, profile }: SidebarP
           </div>
         </div>
 
-        <div className="options-widget-item">
-          <div className="options-item-header">
-            <span>Core Technology Stack</span>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px', fontSize: '0.78rem' }}>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
-                <span>React / Frontend</span>
-                <span style={{ color: 'var(--color-primary)' }}>85%</span>
-              </div>
-              <div style={{ width: '100%', height: '4px', backgroundColor: '#e5e7eb', borderRadius: '2px', overflow: 'hidden' }}>
-                <div style={{ width: '85%', height: '100%', backgroundColor: 'var(--color-primary)', borderRadius: '2px' }} />
-              </div>
-            </div>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
-                <span>NumPy / AI Inference</span>
-                <span style={{ color: 'var(--color-primary)' }}>60%</span>
-              </div>
-              <div style={{ width: '100%', height: '4px', backgroundColor: '#e5e7eb', borderRadius: '2px', overflow: 'hidden' }}>
-                <div style={{ width: '60%', height: '100%', backgroundColor: 'var(--color-primary)', borderRadius: '2px' }} />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <button 
-          type="button" 
-          className="sync-button" 
-          style={{ marginTop: '16px', gap: '8px' }} 
-          onClick={() => alert('Synced with GitHub repository and updated learning streaks!')}
-        >
-          <Github size={14} />
-          Sync GitHub Repos
-        </button>
       </div>
     </aside>
   );

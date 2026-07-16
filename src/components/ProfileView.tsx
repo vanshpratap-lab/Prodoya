@@ -2,12 +2,32 @@ import { useState } from 'react';
 import { Github, Linkedin, Twitter, Award, ShieldCheck, Lock, Flame, Trophy, Sparkles, Code, Cpu, Layers, GitPullRequest } from 'lucide-react';
 import Avatar from './Avatar';
 import type { Profile } from '../lib/supabase';
+import Activity from './Activity';
+import type { FeedPost } from './PostCard';
 
 interface ProfileViewProps {
   profile: Profile;
+  myPosts: FeedPost[];
+  followerCount: number;
+  onLike: (id: number) => void;
+  onRepost: (id: number) => void;
+  onCommentAdded: (id: number) => void;
+  onDelete: (id: number) => void;
+  onShowAllActivity: () => void;
+  onCreatePost: () => void;
 }
 
-export default function ProfileView({ profile }: ProfileViewProps) {
+export default function ProfileView({
+  profile,
+  myPosts,
+  followerCount,
+  onLike,
+  onRepost,
+  onCommentAdded,
+  onDelete,
+  onShowAllActivity,
+  onCreatePost,
+}: ProfileViewProps) {
   const [selectedYear, setSelectedYear] = useState<2026 | 2025>(2026);
 
   // Generate a mock dataset for 53 weeks x 7 days contribution grid
@@ -122,6 +142,20 @@ export default function ProfileView({ profile }: ProfileViewProps) {
           </a>
         </div>
       </div>
+
+      {/* Activity — the user's own proof-of-work posts */}
+      <Activity
+        variant="compact"
+        currentUser={profile}
+        myPosts={myPosts}
+        followerCount={followerCount}
+        onLike={onLike}
+        onRepost={onRepost}
+        onCommentAdded={onCommentAdded}
+        onDelete={onDelete}
+        onShowAll={onShowAllActivity}
+        onCreatePost={onCreatePost}
+      />
 
       {/* GitHub Contributions Grid */}
       <div 

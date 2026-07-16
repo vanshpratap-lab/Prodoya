@@ -4,8 +4,8 @@ import Avatar from './Avatar';
 import type { Profile } from '../lib/supabase';
 
 interface TopBarProps {
-  activeTab: 'home' | 'network' | 'rank' | 'messages' | 'profile' | 'tools';
-  setActiveTab: (tab: 'home' | 'network' | 'rank' | 'messages' | 'profile' | 'tools') => void;
+  activeTab: 'home' | 'network' | 'rank' | 'messages' | 'profile' | 'tools' | 'activity';
+  setActiveTab: (tab: 'home' | 'network' | 'rank' | 'messages' | 'profile' | 'tools' | 'activity') => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   setNotificationsOpen: (open: boolean) => void;
