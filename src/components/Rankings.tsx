@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Award, Flame, TrendingUp, TrendingDown } from 'lucide-react';
+import { Award, Activity, TrendingUp, TrendingDown } from 'lucide-react';
 import Avatar from './Avatar';
 
 interface LeaderboardEntry {
@@ -7,7 +7,7 @@ interface LeaderboardEntry {
   rank: number;
   name: string;
   score: string;
-  streaks: string;
+  activeDays: number;
   change: string;
   role: string;
   avatar: string;
@@ -16,10 +16,9 @@ interface LeaderboardEntry {
 interface RankingsProps {
   ranks: LeaderboardEntry[];
   currentUserId: string;
-  streakDays: number;
 }
 
-export default function Rankings({ ranks, currentUserId, streakDays }: RankingsProps) {
+export default function Rankings({ ranks, currentUserId }: RankingsProps) {
   const [loading, setLoading] = useState(true);
 
   // Local loading skeleton simulation on tab mount
@@ -28,9 +27,11 @@ export default function Rankings({ ranks, currentUserId, streakDays }: RankingsP
     return () => clearTimeout(timer);
   }, []);
 
+  const myRow = ranks.find(r => r.id === currentUserId);
+
   return (
     <div className="rank-leaderboard-container">
-      {/* Streak Banner */}
+      {/* Engineering Rank Banner */}
       <div
         className="relative overflow-hidden"
         style={{
@@ -48,13 +49,13 @@ export default function Rankings({ ranks, currentUserId, streakDays }: RankingsP
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', color: 'var(--color-text-strong)', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Award style={{ color: 'var(--color-warning)' }} size={24} />
-            Leaderboard Standings
+            Engineering Rank
           </h3>
           <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted-light)' }}>
             {(() => {
               const myIdx = ranks.findIndex(r => r.id === currentUserId);
               if (myIdx < 0) return 'Post your first update to join the leaderboard!';
-              if (myIdx === 0) return "You're #1 on the platform! Keep the streak alive.";
+              if (myIdx === 0) return "You're #1 on the platform for real engineering work.";
               const gap = parseInt(ranks[0].score.replace(/[^\d]/g, ''), 10) - parseInt(ranks[myIdx].score.replace(/[^\d]/g, ''), 10);
               return `Ranked #${myIdx + 1} on the CS Platform. You are only ${gap.toLocaleString()} points away from #1!`;
             })()}
@@ -63,11 +64,11 @@ export default function Rankings({ ranks, currentUserId, streakDays }: RankingsP
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingRight: '12px' }}>
           <span style={{ fontSize: '4.5rem', fontFamily: 'var(--font-specialty)', color: 'var(--color-primary)', lineHeight: 0.85 }}>
-            {streakDays}
+            {myRow?.activeDays ?? 0}
           </span>
           <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.72rem', color: 'var(--color-text-muted-light)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px' }}>
-            <span>Days</span>
-            <span style={{ color: 'var(--color-primary)', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>Streak <Flame size={12} fill="var(--color-primary)" /></span>
+            <span>Active</span>
+            <span style={{ color: 'var(--color-primary)', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>Days <Activity size={12} /></span>
           </div>
         </div>
       </div>
@@ -95,8 +96,8 @@ export default function Rankings({ ranks, currentUserId, streakDays }: RankingsP
           const isUp = row.change === 'up';
 
           return (
-            <div 
-              className={`leaderboard-row ${isCurrentUser ? 'border-primary relative overflow-hidden' : ''}`} 
+            <div
+              className={`leaderboard-row ${isCurrentUser ? 'border-primary relative overflow-hidden' : ''}`}
               key={row.rank}
               style={{
                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -106,7 +107,7 @@ export default function Rankings({ ranks, currentUserId, streakDays }: RankingsP
               }}
             >
               {isCurrentUser && (
-                <div 
+                <div
                   style={{
                     position: 'absolute',
                     top: 0,
@@ -132,7 +133,7 @@ export default function Rankings({ ranks, currentUserId, streakDays }: RankingsP
               </div>
 
               <div className="leaderboard-right-info">
-                <span 
+                <span
                   className={`rank-shift-indicator ${isUp ? 'up' : 'down'}`}
                   style={{
                     backgroundColor: isUp ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
@@ -159,7 +160,7 @@ export default function Rankings({ ranks, currentUserId, streakDays }: RankingsP
                     </>
                   )}
                 </span>
-                
+
                 <span
                   className="rank-shift-indicator"
                   style={{
@@ -174,8 +175,8 @@ export default function Rankings({ ranks, currentUserId, streakDays }: RankingsP
                     fontWeight: 700
                   }}
                 >
-                  <Flame size={12} fill="var(--color-primary)" />
-                  {row.streaks.split(' ')[0]}d
+                  <Activity size={12} />
+                  {row.activeDays}d
                 </span>
                 <span className="rank-score" style={{ fontWeight: 'bold' }}>{row.score}</span>
               </div>

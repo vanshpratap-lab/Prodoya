@@ -1,39 +1,77 @@
 import { useState } from 'react';
-import { Github, Linkedin, Twitter, Award, ShieldCheck, Lock, Flame, Trophy, Sparkles, Code, Cpu, Layers, GitPullRequest } from 'lucide-react';
+import { Github, Linkedin, Twitter, Award, ShieldCheck, Lock, Code, Cpu, Layers, GitPullRequest, Share2, Check, Activity as ActivityIcon, GitBranch, BookOpen, GitFork, FlaskConical, Users, Star, Zap } from 'lucide-react';
 import Avatar from './Avatar';
 import type { Profile } from '../lib/supabase';
+import Activity from './Activity';
+import type { FeedPost } from './PostCard';
+import { useEngineeringActivity, useActivityCalendar } from '../lib/hooks';
 
 interface ProfileViewProps {
   profile: Profile;
+  myPosts: FeedPost[];
+  followerCount: number;
+  onLike: (id: number) => void;
+  onRepost: (id: number) => void;
+  onCommentAdded: (id: number) => void;
+  onDelete: (id: number) => void;
+  onShowAllActivity: () => void;
+  onCreatePost: () => void;
 }
 
-export default function ProfileView({ profile }: ProfileViewProps) {
+export default function ProfileView({
+  profile,
+  myPosts,
+  followerCount,
+  onLike,
+  onRepost,
+  onCommentAdded,
+  onDelete,
+  onShowAllActivity,
+  onCreatePost,
+}: ProfileViewProps) {
   const [selectedYear, setSelectedYear] = useState<2026 | 2025>(2026);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const { activity } = useEngineeringActivity(profile.id);
+  const { days: activityDays } = useActivityCalendar(profile.id);
 
-  // Generate a mock dataset for 53 weeks x 7 days contribution grid
-  const generateMockContributions = () => {
+  const shareProfileLink = async () => {
+    const url = `${window.location.origin}/u/${profile.username ?? profile.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      window.prompt('Copy your public profile link:', url);
+    }
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  };
+
+  // Real GitHub-style contribution grid: 53 weeks x 7 days, built from actual post activity.
+  const buildContributionGrid = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = new Date(today);
+    start.setDate(start.getDate() - 370);
+    // Align to the most recent Sunday on/before `start` so weeks are Sun→Sat columns.
+    start.setDate(start.getDate() - start.getDay());
+
     const grid: number[][] = [];
+    const cursor = new Date(start);
     for (let w = 0; w < 53; w++) {
       const week: number[] = [];
       for (let d = 0; d < 7; d++) {
-        let val = 0;
-        const randomFactor = Math.random();
-        
-        if (w >= 30 && w <= 38) {
-          val = randomFactor > 0.8 ? 4 : (randomFactor > 0.5 ? 3 : (randomFactor > 0.2 ? 2 : 1));
-        } else if (w >= 10 && w <= 18) {
-          val = randomFactor > 0.85 ? 4 : (randomFactor > 0.6 ? 3 : (randomFactor > 0.3 ? 2 : 1));
-        } else {
-          val = randomFactor > 0.95 ? 3 : (randomFactor > 0.75 ? 2 : (randomFactor > 0.4 ? 1 : 0));
-        }
-        week.push(val);
+        const key = cursor.toISOString().slice(0, 10);
+        const count = activityDays.get(key) ?? 0;
+        const level = count === 0 ? 0 : count === 1 ? 1 : count === 2 ? 2 : count <= 4 ? 3 : 4;
+        week.push(level);
+        cursor.setDate(cursor.getDate() + 1);
       }
       grid.push(week);
     }
     return grid;
   };
 
-  const contributionGrid = generateMockContributions();
+  const contributionGrid = buildContributionGrid();
+  const totalContributions = [...activityDays.values()].reduce((sum, n) => sum + n, 0);
 
   const getCellColor = (level: number) => {
     switch (level) {
@@ -90,6 +128,15 @@ export default function ProfileView({ profile }: ProfileViewProps) {
         </div>
 
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={shareProfileLink}
+            className="feed-action-btn"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', backgroundColor: 'var(--color-primary)', color: 'var(--color-on-primary)', border: 'none', padding: '6px 14px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}
+          >
+            {linkCopied ? <Check size={15} /> : <Share2 size={15} />}
+            {linkCopied ? 'Link copied!' : 'Share public profile'}
+          </button>
           <a
             href={profile.github_url || 'https://github.com'}
             target="_blank"
@@ -123,6 +170,20 @@ export default function ProfileView({ profile }: ProfileViewProps) {
         </div>
       </div>
 
+      {/* Activity — the user's own proof-of-work posts */}
+      <Activity
+        variant="compact"
+        currentUser={profile}
+        myPosts={myPosts}
+        followerCount={followerCount}
+        onLike={onLike}
+        onRepost={onRepost}
+        onCommentAdded={onCommentAdded}
+        onDelete={onDelete}
+        onShowAll={onShowAllActivity}
+        onCreatePost={onCreatePost}
+      />
+
       {/* GitHub Contributions Grid */}
       <div 
         style={{ 
@@ -138,7 +199,7 @@ export default function ProfileView({ profile }: ProfileViewProps) {
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           <h3 style={{ fontSize: '1.1rem', color: 'var(--color-text-strong)', margin: 0, fontWeight: 600 }}>
-            844 contributions in the last year
+            {totalContributions} contribution{totalContributions === 1 ? '' : 's'} in the last year
           </h3>
           
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -241,10 +302,10 @@ export default function ProfileView({ profile }: ProfileViewProps) {
 
       {/* Developer Stats & Progression Dashboard */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
-        
-        {/* Progression & Streak Metrics Panel */}
-        <div 
-          style={{ 
+
+        {/* Engineering Activity Panel — real, GitHub-contribution-style metrics */}
+        <div
+          style={{
             backgroundColor: 'var(--color-surface)',
             border: '1px solid var(--color-dark-border)',
             borderRadius: '20px',
@@ -256,51 +317,29 @@ export default function ProfileView({ profile }: ProfileViewProps) {
           }}
         >
           <h3 style={{ fontSize: '1.1rem', color: 'var(--color-text-strong)', margin: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Sparkles className="text-amber-400" size={20} />
-            Progression & Streaks
+            <ActivityIcon className="text-amber-400" size={20} />
+            Engineering Activity
           </h3>
-          
+
           <hr style={{ border: 'none', borderTop: '1px solid var(--color-dark-border)' }} />
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {/* Stat Row 1: Streak */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', backgroundColor: 'var(--color-surface-elevated)', borderRadius: '12px', border: '1px solid var(--color-dark-border)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Flame className="text-orange-500" size={22} />
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--color-text-strong)', fontWeight: 600 }}>Active Streak</span>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted-light)' }}>Syncing commits daily</span>
-                </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+            {[
+              { icon: ActivityIcon, label: 'Active Days', value: activity.active_days, color: '#f97316' },
+              { icon: GitBranch, label: 'Projects Built', value: activity.projects_built, color: 'var(--color-primary)' },
+              { icon: BookOpen, label: 'Learning Sessions', value: activity.learning_sessions, color: '#3b82f6' },
+              { icon: GitFork, label: 'Open Source', value: activity.open_source_contributions, color: '#10b981' },
+              { icon: FlaskConical, label: 'Research Activity', value: activity.research_activity, color: '#ec4899' },
+              { icon: Users, label: 'Community', value: activity.community_contributions, color: '#8b5cf6' },
+              { icon: Star, label: 'Reputation', value: activity.reputation_score, color: '#eab308' },
+              { icon: Zap, label: 'AI Impact', value: activity.ai_impact_score, color: '#06b6d4' },
+            ].map(stat => (
+              <div key={stat.label} style={{ padding: '12px', backgroundColor: 'var(--color-surface-elevated)', borderRadius: '12px', border: '1px solid var(--color-dark-border)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <stat.icon size={16} style={{ color: stat.color }} />
+                <span style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--color-text-strong)' }}>{stat.value.toLocaleString()}</span>
+                <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted-light)', fontWeight: 600 }}>{stat.label}</span>
               </div>
-              <span style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f97316' }}>14 Days</span>
-            </div>
-
-            {/* Stat Row 2: Rank */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', backgroundColor: 'var(--color-surface-elevated)', borderRadius: '12px', border: '1px solid var(--color-dark-border)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Trophy className="text-yellow-500" size={22} />
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--color-text-strong)', fontWeight: 600 }}>Platform Rank</span>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted-light)' }}>Global standings</span>
-                </div>
-              </div>
-              <span style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-primary)' }}>Top 2%</span>
-            </div>
-
-            {/* Stat Row 3: XP Progress */}
-            <div style={{ padding: '14px', backgroundColor: 'var(--color-surface-elevated)', borderRadius: '12px', border: '1px solid var(--color-dark-border)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-                <span style={{ color: 'var(--color-text-muted-light)', fontWeight: 600 }}>Total Experience</span>
-                <span style={{ color: 'var(--color-text-strong)', fontWeight: 700 }}>18,400 XP</span>
-              </div>
-              {/* Progress Bar */}
-              <div style={{ height: '8px', backgroundColor: '#e5e7eb', borderRadius: '4px', overflow: 'hidden', position: 'relative' }}>
-                <div style={{ width: '75%', height: '100%', backgroundColor: 'var(--color-primary)', borderRadius: '4px', boxShadow: '0 0 8px var(--color-primary)' }} />
-              </div>
-              <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted-light)', textAlign: 'right' }}>
-                1,600 XP to next level (Level 28 Architect)
-              </span>
-            </div>
+            ))}
           </div>
         </div>
 

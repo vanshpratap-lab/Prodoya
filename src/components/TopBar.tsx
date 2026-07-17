@@ -1,14 +1,13 @@
 import { useState } from 'react';
-import { Menu, Search, Bell } from 'lucide-react';
+import { Menu, Search, Bell, Sparkles } from 'lucide-react';
 import Avatar from './Avatar';
 import type { Profile } from '../lib/supabase';
 
 interface TopBarProps {
-  activeTab: 'home' | 'network' | 'rank' | 'messages' | 'profile' | 'tools';
-  setActiveTab: (tab: 'home' | 'network' | 'rank' | 'messages' | 'profile' | 'tools') => void;
+  activeTab: 'home' | 'network' | 'rank' | 'messages' | 'profile' | 'activity' | 'notifications' | 'ai';
+  setActiveTab: (tab: 'home' | 'network' | 'rank' | 'messages' | 'profile' | 'activity' | 'notifications' | 'ai') => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
-  setNotificationsOpen: (open: boolean) => void;
   setSidebarOpen: (open: (prev: boolean) => boolean) => void;
   notificationsCount: number;
   profile: Profile;
@@ -20,7 +19,6 @@ export default function TopBar({
   setActiveTab,
   searchQuery,
   setSearchQuery,
-  setNotificationsOpen,
   setSidebarOpen,
   notificationsCount,
   profile,
@@ -32,17 +30,15 @@ export default function TopBar({
   return (
     <header className="top-bar">
       <div className="top-bar-logo-area">
-        {activeTab !== 'tools' && (
-          <button 
-            className="top-bar-hamburger"
-            type="button"
-            onClick={() => setSidebarOpen(prev => !prev)}
-            aria-label="Toggle navigation sidebar"
-          >
-            <Menu size={22} />
-          </button>
-        )}
-        
+        <button
+          className="top-bar-hamburger"
+          type="button"
+          onClick={() => setSidebarOpen(prev => !prev)}
+          aria-label="Toggle navigation sidebar"
+        >
+          <Menu size={22} />
+        </button>
+
         <div 
           className={`top-bar-search-wrapper ${searchFocused ? 'focused' : ''}`}
           style={{
@@ -87,9 +83,9 @@ export default function TopBar({
           onClick={() => setActiveTab('rank')}
           style={{ background: 'none', border: 'none', fontWeight: 600, fontFamily: 'var(--font-sans)', fontSize: '0.95rem' }}
         >
-          Streaks & Rank
+          Engineering Rank
         </button>
-        <button 
+        <button
           type="button"
           className={`top-bar-link ${activeTab === 'messages' ? 'active' : ''}`}
           onClick={() => setActiveTab('messages')}
@@ -97,14 +93,23 @@ export default function TopBar({
         >
           Dev Collaboration
         </button>
+        <button
+          type="button"
+          className={`top-bar-link ${activeTab === 'ai' ? 'active' : ''}`}
+          onClick={() => setActiveTab('ai')}
+          style={{ background: 'none', border: 'none', fontWeight: 600, fontFamily: 'var(--font-sans)', fontSize: '0.95rem', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+        >
+          <Sparkles size={15} />
+          AI
+        </button>
       </nav>
 
       <div className="top-bar-profile-area" style={{ gap: '16px', position: 'relative' }}>
-        <button 
-          onClick={() => setNotificationsOpen(true)}
+        <button
+          onClick={() => setActiveTab('notifications')}
           className="relative p-2 rounded-full transition-colors"
-          style={{ position: 'relative', background: 'none', border: 'none', color: 'var(--color-text-light)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          aria-label="Open notifications drawer"
+          style={{ position: 'relative', background: 'none', border: 'none', color: activeTab === 'notifications' ? 'var(--color-primary)' : 'var(--color-text-light)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          aria-label="Open notifications page"
         >
           <Bell size={22} />
           {notificationsCount > 0 && (
@@ -211,24 +216,6 @@ export default function TopBar({
                 >
                   View profile
                 </button>
-                <button
-                  type="button"
-                  onClick={() => { setProfileMenuOpen(false); setActiveTab('tools'); }}
-                  style={{
-                    flex: 1,
-                    padding: '8px 12px',
-                    borderRadius: '20px',
-                    border: 'none',
-                    backgroundColor: 'var(--color-primary)',
-                    color: 'var(--color-on-primary)',
-                    fontSize: '0.78rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease-in-out'
-                  }}
-                >
-                  Tools
-                </button>
               </div>
 
               <hr style={{ border: 'none', borderTop: '1px solid var(--color-dark-border)', margin: '4px 0' }} />
@@ -273,8 +260,8 @@ export default function TopBar({
                   Manage
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.85rem' }}>
-                  <button 
-                    onClick={() => { setProfileMenuOpen(false); alert('Posts & Activity clicked!'); }}
+                  <button
+                    onClick={() => { setProfileMenuOpen(false); setActiveTab('activity'); }}
                     style={{ background: 'none', border: 'none', color: 'var(--color-text-light)', textAlign: 'left', cursor: 'pointer', padding: '4px 0' }}
                   >
                     Posts & Activity

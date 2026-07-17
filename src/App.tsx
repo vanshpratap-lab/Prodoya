@@ -6,21 +6,22 @@ import Feed from './components/Feed';
 import Peers from './components/Peers';
 import Rankings from './components/Rankings';
 import Chat from './components/Chat';
-import NotificationsDrawer from './components/NotificationsDrawer';
+import Notifications from './components/Notifications';
 import ProfileView from './components/ProfileView';
-import ToolsView from './components/ToolsView';
+import Activity from './components/Activity';
+import AiChat from './components/AiChat';
 import Auth from './components/Auth';
 import { useAuth } from './lib/AuthContext';
 import { usePosts, useConnections, useCommunityChat, useNotifications, useLeaderboard } from './lib/hooks';
 import { formatRelativeTime } from './lib/time';
+import { playNotificationChime } from './lib/sound';
 
 const POINTS_MAP = { beginner: 10, intermediate: 20, advanced: 35 } as const;
 
 export default function App() {
   const { session, user, profile, loading: authLoading, refreshProfile, signOut } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'home' | 'network' | 'rank' | 'messages' | 'profile' | 'tools'>('home');
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'home' | 'network' | 'rank' | 'messages' | 'profile' | 'activity' | 'notifications' | 'ai'>('home');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [feedFilter, setFeedFilter] = useState<'all' | 'aiml' | 'webdev' | 'opensource' | 'hackathons'>('all');
@@ -28,7 +29,7 @@ export default function App() {
   const [typeMessage, setTypeMessage] = useState('');
 
   const userId = user?.id;
-  const { posts, createPost, toggleLike } = usePosts(userId);
+  const { feedItems, createPost, toggleLike, toggleRepost, incrementCommentCount, deletePost, blockUser } = usePosts(userId);
   const { connections, toggleConnect, connectionCount } = useConnections(userId);
   const { chats, sendMessage } = useCommunityChat(userId);
   const { notifications, addNotification } = useNotifications(userId);
@@ -56,8 +57,11 @@ export default function App() {
     return <Auth />;
   }
 
-  const feedPosts = posts.map(p => ({
+  const feedPosts = feedItems.map(p => ({
     id: p.id,
+    feedKey: p.feed_key,
+    repostedBy: p.reposted_by ?? undefined,
+    authorId: p.author_id,
     author: p.author?.full_name ?? 'Unknown',
     avatar: p.author?.avatar_url ?? '',
     college: p.author?.college ?? '',
@@ -68,17 +72,21 @@ export default function App() {
     aiPoints: p.ai_points,
     likes: p.like_count,
     hasLiked: p.has_liked,
-    time: formatRelativeTime(p.created_at),
+    reposts: p.repost_count,
+    hasReposted: p.has_reposted,
+    commentCount: p.comment_count,
+    time: formatRelativeTime(p.activity_at),
     githubUrl: p.github_url ?? undefined,
     codeSnippet: p.code_snippet ?? undefined,
     projectShowcase: p.project_showcase_url ?? undefined,
+    videoUrl: p.video_url ?? undefined,
   }));
 
   const handleCreatePost = async (
     text: string,
     difficulty: 'beginner' | 'intermediate' | 'advanced',
     category: string,
-    extraData?: { codeSnippet?: string; githubUrl?: string },
+    extraData?: { imageUrl?: string; videoUrl?: string },
   ) => {
     const points = POINTS_MAP[difficulty];
     try {
@@ -86,9 +94,9 @@ export default function App() {
         content: text,
         ai_difficulty: difficulty,
         ai_points: points,
-        tags: [`#${category}`, '#streakUpdate', '#buildInPublic'],
-        code_snippet: extraData?.codeSnippet,
-        github_url: extraData?.githubUrl,
+        tags: [`#${category}`, '#proofOfWork', '#buildInPublic'],
+        project_showcase_url: extraData?.imageUrl,
+        video_url: extraData?.videoUrl,
       });
       await Promise.all([refreshProfile(), refetchLeaderboard()]);
       await addNotification(
@@ -104,7 +112,22 @@ export default function App() {
     toggleLike(id);
   };
 
+  const handleRepostPost = (id: number) => {
+    toggleRepost(id);
+  };
+
+  const handleDeletePost = async (id: number) => {
+    await deletePost(id);
+    await Promise.all([refreshProfile(), refetchLeaderboard()]);
+  };
+
+  // The signed-in user's own authored posts (original entries only, newest first).
+  const myPosts = feedPosts.filter(p => p.authorId === user.id && !p.repostedBy);
+
   const handleToggleConnect = (id: string) => {
+    // Chime for the initiating user only when a new connection request goes out (not on disconnect).
+    const alreadyConnected = connections.find(c => c.id === id)?.connected;
+    if (!alreadyConnected) playNotificationChime();
     toggleConnect(id);
   };
 
@@ -119,8 +142,8 @@ export default function App() {
     id: p.id,
     rank: idx + 1,
     name: p.full_name,
-    score: `${p.points.toLocaleString()} pts`,
-    streaks: `${p.streak_days} Days Streak`,
+    score: `${Math.round(p.rank_score).toLocaleString()} pts`,
+    activeDays: p.active_days,
     change: idx % 2 === 0 ? 'up' : 'down',
     role: p.college ? `${p.role} — ${p.college}` : p.role,
     avatar: p.avatar_url,
@@ -132,7 +155,6 @@ export default function App() {
     connections: connectionCount,
     rating: 4.9,
     rank: myRankIndex >= 0 ? myRankIndex + 1 : ranks.length || 1,
-    streaks: profile.streak_days,
     points: profile.points,
   };
 
@@ -144,7 +166,6 @@ export default function App() {
         setActiveTab={setActiveTab}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
-        setNotificationsOpen={setNotificationsOpen}
         setSidebarOpen={setSidebarOpen}
         notificationsCount={notifications.length}
         profile={profile}
@@ -153,13 +174,32 @@ export default function App() {
 
       {/* Main Container Wrapper */}
       <div className="main-wrapper">
-        {/* Sidebar Navigation & Profile Card (hidden on the Tools workspace) */}
-        {activeTab !== 'tools' && (
+        {activeTab !== 'ai' && (
           <Sidebar profileStats={profileStats} sidebarOpen={sidebarOpen} profile={profile} />
         )}
 
-        {activeTab === 'tools' ? (
-          <ToolsView profile={profile} setActiveTab={setActiveTab} />
+        {activeTab === 'ai' ? (
+          <main className="content-area" style={{ padding: 0 }}>
+            <AiChat currentUser={profile} sidebarOpen={sidebarOpen} />
+          </main>
+        ) : activeTab === 'activity' ? (
+          <main className="content-area">
+            <Activity
+              variant="full"
+              currentUser={profile}
+              myPosts={myPosts}
+              followerCount={connectionCount}
+              onLike={handleLikePost}
+              onRepost={handleRepostPost}
+              onCommentAdded={incrementCommentCount}
+              onDelete={handleDeletePost}
+              onBack={() => setActiveTab('profile')}
+            />
+          </main>
+        ) : activeTab === 'notifications' ? (
+          <main className="content-area">
+            <Notifications notifications={notifications} />
+          </main>
         ) : (
           /* Content View Switcher */
           <main
@@ -169,6 +209,10 @@ export default function App() {
               <Feed
                 feedPosts={feedPosts}
                 handleLikePost={handleLikePost}
+                handleRepostPost={handleRepostPost}
+                onCommentAdded={incrementCommentCount}
+                handleDeletePost={handleDeletePost}
+                handleBlockUser={blockUser}
                 handleCreatePost={handleCreatePost}
                 searchQuery={searchQuery}
                 feedFilter={feedFilter}
@@ -181,7 +225,7 @@ export default function App() {
               <Peers connections={connections} handleToggleConnect={handleToggleConnect} searchQuery={searchQuery} />
             )}
 
-            {activeTab === 'rank' && <Rankings ranks={ranks} currentUserId={user.id} streakDays={profile.streak_days} />}
+            {activeTab === 'rank' && <Rankings ranks={ranks} currentUserId={user.id} />}
 
             {activeTab === 'messages' && (
               <Chat
@@ -194,17 +238,22 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'profile' && <ProfileView profile={profile} />}
+            {activeTab === 'profile' && (
+              <ProfileView
+                profile={profile}
+                myPosts={myPosts}
+                followerCount={connectionCount}
+                onLike={handleLikePost}
+                onRepost={handleRepostPost}
+                onCommentAdded={incrementCommentCount}
+                onDelete={handleDeletePost}
+                onShowAllActivity={() => setActiveTab('activity')}
+                onCreatePost={() => setActiveTab('home')}
+              />
+            )}
           </main>
         )}
       </div>
-
-      {/* Slide-out Notification Drawer */}
-      <NotificationsDrawer
-        notifications={notifications}
-        notificationsOpen={notificationsOpen}
-        setNotificationsOpen={setNotificationsOpen}
-      />
     </div>
   );
 }
