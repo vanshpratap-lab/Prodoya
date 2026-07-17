@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase, type Post, type Profile, type ChatChannel, type DbMessage, type PostComment } from './supabase';
+import { supabase, type Post, type Profile, type ChatChannel, type DbMessage, type PostComment, type EngineeringActivity } from './supabase';
 import { formatRelativeTime, formatClockTime } from './time';
+import { playNotificationChime } from './sound';
 
 // ─── Posts / Feed ──────────────────────────────────────────────────────────
 
@@ -14,6 +15,7 @@ export interface RepostEntry {
 export function usePosts(currentUserId: string | undefined) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [repostEntries, setRepostEntries] = useState<RepostEntry[]>([]);
+  const [rankScores, setRankScores] = useState<Map<number, number>>(new Map());
   const [loading, setLoading] = useState(true);
 
   const fetchPosts = useCallback(async () => {
@@ -72,6 +74,10 @@ export function usePosts(currentUserId: string | undefined) {
     (commentsData || []).forEach(c => {
       commentCounts.set(c.post_id, (commentCounts.get(c.post_id) || 0) + 1);
     });
+
+    // Feed ranking algorithm (engagement × decay × affinity × trust — computed in Postgres).
+    const { data: ranking } = await supabase.rpc('get_feed_ranking');
+    setRankScores(new Map(((ranking as { post_id: number; score: number }[] | null) || []).map(r => [r.post_id, r.score])));
 
     setPosts(
       postsData.map((p: any) => ({
@@ -158,15 +164,26 @@ export function usePosts(currentUserId: string | undefined) {
     if (error) await fetchPosts();
   };
 
-  // Merge original posts and repost activity into one LinkedIn-style feed timeline.
-  const feedItems: FeedItem[] = posts.map(p => ({
+  const blockUser = async (userId: string) => {
+    if (!currentUserId || userId === currentUserId) return;
+    // Optimistically drop everything from the blocked author, then persist.
+    setPosts(prev => prev.filter(p => p.author_id !== userId));
+    setRepostEntries(prev => prev.filter(r => r.user_id !== userId));
+    await supabase.from('user_blocks').insert({ blocker_id: currentUserId, blocked_id: userId });
+    await fetchPosts();
+  };
+
+  // Merge original posts and repost activity into one ranked feed timeline.
+  // Blocked authors are excluded because get_feed_ranking omits their posts.
+  const visiblePosts = rankScores.size > 0 ? posts.filter(p => rankScores.has(p.id)) : posts;
+  const feedItems: FeedItem[] = visiblePosts.map(p => ({
     ...p,
     feed_key: `post-${p.id}`,
     reposted_by: null,
     activity_at: p.created_at,
   }));
   repostEntries.forEach(r => {
-    const original = posts.find(p => p.id === r.post_id);
+    const original = visiblePosts.find(p => p.id === r.post_id);
     if (!original) return;
     feedItems.push({
       ...original,
@@ -175,9 +192,14 @@ export function usePosts(currentUserId: string | undefined) {
       activity_at: r.created_at,
     });
   });
-  feedItems.sort((a, b) => new Date(b.activity_at).getTime() - new Date(a.activity_at).getTime());
+  // Primary sort: algorithm score. Tiebreak: newest activity first.
+  feedItems.sort((a, b) => {
+    const diff = (rankScores.get(b.id) ?? 0) - (rankScores.get(a.id) ?? 0);
+    if (Math.abs(diff) > 1e-9) return diff;
+    return new Date(b.activity_at).getTime() - new Date(a.activity_at).getTime();
+  });
 
-  return { posts, feedItems, loading, createPost, toggleLike, toggleRepost, incrementCommentCount, deletePost, refetch: fetchPosts };
+  return { posts, feedItems, loading, createPost, toggleLike, toggleRepost, incrementCommentCount, deletePost, blockUser, refetch: fetchPosts };
 }
 
 export interface FeedItem extends Post {
@@ -235,6 +257,73 @@ export function usePostComments(postId: number, enabled: boolean) {
   return { comments, loading, addComment, refetch: fetchComments };
 }
 
+// ─── Engineering Activity (replaces the old streak system) ─────────────────
+// GitHub-contribution-graph-style metrics computed live from real proof-of-work
+// data: posts, likes, comments, reposts. Nothing here is a login streak.
+
+const EMPTY_ACTIVITY: EngineeringActivity = {
+  active_days: 0,
+  projects_built: 0,
+  learning_sessions: 0,
+  open_source_contributions: 0,
+  research_activity: 0,
+  community_contributions: 0,
+  reputation_score: 0,
+  ai_impact_score: 0,
+};
+
+export function useEngineeringActivity(userId: string | undefined) {
+  const [activity, setActivity] = useState<EngineeringActivity>(EMPTY_ACTIVITY);
+  const [loading, setLoading] = useState(true);
+
+  const fetchActivity = useCallback(async () => {
+    if (!userId) {
+      setActivity(EMPTY_ACTIVITY);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const { data } = await supabase.rpc('get_engineering_activity', { p_user_id: userId });
+    const row = (data as EngineeringActivity[] | null)?.[0];
+    setActivity(row ?? EMPTY_ACTIVITY);
+    setLoading(false);
+  }, [userId]);
+
+  useEffect(() => {
+    fetchActivity();
+  }, [fetchActivity]);
+
+  return { activity, loading, refetch: fetchActivity };
+}
+
+// GitHub-style contribution calendar (day → post count) for a user.
+export function useActivityCalendar(userId: string | undefined) {
+  const [days, setDays] = useState<Map<string, number>>(new Map());
+  const [loading, setLoading] = useState(true);
+
+  const fetchCalendar = useCallback(async () => {
+    if (!userId) {
+      setDays(new Map());
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const { data } = await supabase.rpc('get_activity_calendar', { p_user_id: userId, p_days: 371 });
+    const map = new Map<string, number>();
+    ((data as { activity_date: string; post_count: number }[] | null) || []).forEach(row => {
+      map.set(row.activity_date, row.post_count);
+    });
+    setDays(map);
+    setLoading(false);
+  }, [userId]);
+
+  useEffect(() => {
+    fetchCalendar();
+  }, [fetchCalendar]);
+
+  return { days, loading, refetch: fetchCalendar };
+}
+
 // ─── Peers / Connections ───────────────────────────────────────────────────
 
 export interface PeerCard {
@@ -249,18 +338,23 @@ export interface PeerCard {
 export function useConnections(currentUserId: string | undefined) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [connectedIds, setConnectedIds] = useState<Set<string>>(new Set());
+  const [suggestionScores, setSuggestionScores] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const [{ data: allProfiles }, connResult] = await Promise.all([
+    const [{ data: allProfiles }, connResult, { data: suggestions }] = await Promise.all([
       supabase.from('profiles').select('*').order('points', { ascending: false }),
       currentUserId
         ? supabase.from('connections').select('requester_id, addressee_id').or(
             `requester_id.eq.${currentUserId},addressee_id.eq.${currentUserId}`,
           )
         : Promise.resolve({ data: [] as { requester_id: string; addressee_id: string }[] }),
+      supabase.rpc('get_peer_suggestions'),
     ]);
+    setSuggestionScores(
+      new Map(((suggestions as { peer_id: string; score: number }[] | null) || []).map(s => [s.peer_id, s.score])),
+    );
     setProfiles((allProfiles || []) as Profile[]);
     const ids = new Set<string>();
     (connResult.data || []).forEach(row => {
@@ -274,8 +368,9 @@ export function useConnections(currentUserId: string | undefined) {
     fetchAll();
   }, [fetchAll]);
 
+  // Discovery ranking: mutual connections + same college + reputation (computed in Postgres).
   const connections: PeerCard[] = profiles
-    .filter(p => p.id !== currentUserId)
+    .filter(p => p.id !== currentUserId && (suggestionScores.size === 0 || suggestionScores.has(p.id)))
     .map(p => ({
       id: p.id,
       name: p.full_name,
@@ -283,7 +378,8 @@ export function useConnections(currentUserId: string | undefined) {
       college: p.college,
       avatar: p.avatar_url,
       connected: connectedIds.has(p.id),
-    }));
+    }))
+    .sort((a, b) => (suggestionScores.get(b.id) ?? 0) - (suggestionScores.get(a.id) ?? 0));
 
   const toggleConnect = async (peerId: string) => {
     if (!currentUserId) return;
@@ -303,7 +399,8 @@ export function useConnections(currentUserId: string | undefined) {
           `and(requester_id.eq.${currentUserId},addressee_id.eq.${peerId}),and(requester_id.eq.${peerId},addressee_id.eq.${currentUserId})`,
         );
     } else {
-      await supabase.from('connections').insert({ requester_id: currentUserId, addressee_id: peerId });
+      // Also notifies the addressee in real time (see send_connection_request RPC).
+      await supabase.rpc('send_connection_request', { p_addressee_id: peerId });
     }
   };
 
@@ -425,7 +522,7 @@ export function useNotifications(currentUserId: string | undefined) {
       .select('*')
       .eq('user_id', currentUserId)
       .order('created_at', { ascending: false })
-      .limit(30);
+      .limit(50);
     setNotifications(
       (data || []).map((n: any) => ({
         id: n.id,
@@ -440,6 +537,30 @@ export function useNotifications(currentUserId: string | undefined) {
     fetchNotifications();
   }, [fetchNotifications]);
 
+  // Live-push new notifications (e.g. connection requests) and chime for the recipient only.
+  useEffect(() => {
+    if (!currentUserId) return;
+    const channel = supabase
+      .channel(`notifications-${currentUserId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${currentUserId}` },
+        (payload: any) => {
+          const n = payload.new;
+          setNotifications(prev =>
+            prev.some(existing => existing.id === n.id)
+              ? prev
+              : [{ id: n.id, icon: n.icon, text: n.text, time: formatRelativeTime(n.created_at) }, ...prev],
+          );
+          playNotificationChime();
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUserId]);
+
   const addNotification = async (icon: string, text: string) => {
     if (!currentUserId) return;
     await supabase.from('notifications').insert({ user_id: currentUserId, icon, text });
@@ -450,19 +571,45 @@ export function useNotifications(currentUserId: string | undefined) {
 }
 
 // ─── Leaderboard ─────────────────────────────────────────────────────────────
+// Ranked by the engineering-rank composite (reputation, activity, projects,
+// open source, community contribution, AI impact) — see get_engineering_rankings().
+
+export interface LeaderboardRow extends Profile {
+  rank_score: number;
+  active_days: number;
+  projects_built: number;
+  open_source_contributions: number;
+  community_contributions: number;
+  ai_impact_score: number;
+}
 
 export function useLeaderboard() {
-  const [rows, setRows] = useState<Profile[]>([]);
+  const [rows, setRows] = useState<LeaderboardRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchLeaderboard = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('points', { ascending: false })
-      .limit(50);
-    setRows((data || []) as Profile[]);
+    const [{ data: profiles }, { data: rankings }] = await Promise.all([
+      supabase.from('profiles').select('*'),
+      supabase.rpc('get_engineering_rankings'),
+    ]);
+    const rankMap = new Map(((rankings as any[] | null) || []).map(r => [r.user_id, r]));
+    const merged: LeaderboardRow[] = ((profiles || []) as Profile[])
+      .map(p => {
+        const r = rankMap.get(p.id);
+        return {
+          ...p,
+          rank_score: r?.rank_score ?? p.points,
+          active_days: r?.active_days ?? 0,
+          projects_built: r?.projects_built ?? 0,
+          open_source_contributions: r?.open_source_contributions ?? 0,
+          community_contributions: r?.community_contributions ?? 0,
+          ai_impact_score: r?.ai_impact_score ?? 0,
+        };
+      })
+      .sort((a, b) => b.rank_score - a.rank_score)
+      .slice(0, 50);
+    setRows(merged);
     setLoading(false);
   }, []);
 

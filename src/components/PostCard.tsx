@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import {
   Github, Heart, ExternalLink, Loader2, GraduationCap, Bot, Flame,
-  MessageCircle, Repeat2, Send, Check, MoreHorizontal, Trash2,
+  MessageCircle, Repeat2, Send, Check, MoreHorizontal, Trash2, Ban,
 } from 'lucide-react';
 import Avatar from './Avatar';
 import type { Profile } from '../lib/supabase';
@@ -99,9 +99,10 @@ interface PostCardProps {
   onRepost: (id: number) => void;
   onCommentAdded: (id: number) => void;
   onDelete?: (id: number) => void;
+  onBlockAuthor?: (authorId: string) => void;
 }
 
-export default function PostCard({ post, currentUser, onLike, onRepost, onCommentAdded, onDelete }: PostCardProps) {
+export default function PostCard({ post, currentUser, onLike, onRepost, onCommentAdded, onDelete, onBlockAuthor }: PostCardProps) {
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -180,7 +181,7 @@ export default function PostCard({ post, currentUser, onLike, onRepost, onCommen
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span className="feed-post-time">{post.time}</span>
-          {isOwner && onDelete && (
+          {((isOwner && onDelete) || (!isOwner && onBlockAuthor)) && (
             <div style={{ position: 'relative' }}>
               <button
                 type="button"
@@ -212,12 +213,16 @@ export default function PostCard({ post, currentUser, onLike, onRepost, onCommen
                         }}
                         className="feed-post-menu-item"
                       >
-                        <Trash2 size={15} />
-                        Delete post
+                        {isOwner ? <Trash2 size={15} /> : <Ban size={15} />}
+                        {isOwner ? 'Delete post' : `Block ${post.author}`}
                       </button>
                     ) : (
                       <div style={{ padding: '6px 8px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        <span style={{ fontSize: '0.82rem', color: 'var(--color-text-light)' }}>Delete this post permanently?</span>
+                        <span style={{ fontSize: '0.82rem', color: 'var(--color-text-light)' }}>
+                          {isOwner
+                            ? 'Delete this post permanently?'
+                            : `Block ${post.author}? You will no longer see each other's posts.`}
+                        </span>
                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                           <button
                             type="button"
@@ -228,12 +233,12 @@ export default function PostCard({ post, currentUser, onLike, onRepost, onCommen
                           </button>
                           <button
                             type="button"
-                            onClick={handleDelete}
+                            onClick={isOwner ? handleDelete : () => { onBlockAuthor?.(post.authorId); setMenuOpen(false); setConfirmDelete(false); }}
                             disabled={deleting}
                             style={{ padding: '6px 12px', borderRadius: '8px', border: 'none', background: '#dc2626', color: '#fff', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                           >
-                            {deleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
-                            Delete
+                            {deleting ? <Loader2 size={13} className="animate-spin" /> : isOwner ? <Trash2 size={13} /> : <Ban size={13} />}
+                            {isOwner ? 'Delete' : 'Block'}
                           </button>
                         </div>
                       </div>

@@ -11,17 +11,30 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export interface Profile {
   id: string;
+  username: string | null;
   full_name: string;
   college: string;
   role: string;
   avatar_url: string;
   bio: string;
   github_url: string;
+  linkedin_url: string | null;
+  twitter_url: string | null;
   tech_stack: { label: string; percent: number }[];
   points: number;
-  streak_days: number;
   last_post_at: string | null;
   created_at: string;
+}
+
+export interface EngineeringActivity {
+  active_days: number;
+  projects_built: number;
+  learning_sessions: number;
+  open_source_contributions: number;
+  research_activity: number;
+  community_contributions: number;
+  reputation_score: number;
+  ai_impact_score: number;
 }
 
 export interface Post {

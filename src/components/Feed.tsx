@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Sparkles, Video, Image as ImageIcon, X, Loader2 } from 'lucide-react';
+import { Video, Image as ImageIcon, X, Loader2 } from 'lucide-react';
 import Avatar from './Avatar';
 import type { Profile } from '../lib/supabase';
 import { uploadPostMedia } from '../lib/hooks';
@@ -11,6 +11,7 @@ interface FeedProps {
   handleRepostPost: (id: number) => void;
   onCommentAdded: (id: number) => void;
   handleDeletePost: (id: number) => void;
+  handleBlockUser: (authorId: string) => void;
   handleCreatePost: (
     text: string,
     difficulty: 'beginner' | 'intermediate' | 'advanced',
@@ -29,6 +30,7 @@ export default function Feed({
   handleRepostPost,
   onCommentAdded,
   handleDeletePost,
+  handleBlockUser,
   handleCreatePost,
   searchQuery,
   feedFilter,
@@ -291,9 +293,6 @@ export default function Feed({
       ) : filteredFeedPosts.length === 0 ? (
         /* Empty State */
         <div style={{ textAlign: 'center', padding: '60px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-          <div style={{ width: '120px', height: '120px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-primary-soft)' }}>
-            <Sparkles size={48} style={{ color: 'var(--color-primary)' }} />
-          </div>
           <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', color: 'var(--color-text-strong)', fontWeight: 500 }}>No proof-of-work posts found</h3>
           <p style={{ color: 'var(--color-text-muted-light)', fontSize: '0.9rem', maxWidth: '380px' }}>There are no learning activities registered under this tag or matching your search. Be the first to share an update!</p>
         </div>
@@ -308,6 +307,7 @@ export default function Feed({
             onRepost={handleRepostPost}
             onCommentAdded={onCommentAdded}
             onDelete={handleDeletePost}
+            onBlockAuthor={handleBlockUser}
           />
         ))
       )}

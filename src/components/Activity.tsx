@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, PenSquare, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, PenSquare } from 'lucide-react';
 import Avatar from './Avatar';
 import type { Profile } from '../lib/supabase';
 import PostCard, { type FeedPost } from './PostCard';
@@ -61,9 +61,6 @@ export default function Activity({
 
   const emptyState = (
     <div style={{ textAlign: 'center', padding: variant === 'compact' ? '28px 16px' : '60px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-      <div style={{ width: '56px', height: '56px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-primary-soft)' }}>
-        <Sparkles size={26} style={{ color: 'var(--color-primary)' }} />
-      </div>
       <span style={{ fontSize: '0.9rem', color: 'var(--color-text-muted-light)' }}>
         {tab === 'images' ? 'No photos or videos posted yet.' : 'No posts yet — share your first proof of work.'}
       </span>

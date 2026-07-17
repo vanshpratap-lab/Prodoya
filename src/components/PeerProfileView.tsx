@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { ArrowLeft, Github, Award, ShieldCheck, Lock, Flame, Trophy, Sparkles, Code, Cpu, Layers, UserPlus, UserCheck, GitPullRequest } from 'lucide-react';
+import { ArrowLeft, Github, Award, ShieldCheck, Lock, Code, Cpu, Layers, UserPlus, UserCheck, GitPullRequest, Activity as ActivityIcon, GitBranch, BookOpen, GitFork, FlaskConical, Users, Star, Zap } from 'lucide-react';
 import Avatar from './Avatar';
+import { useEngineeringActivity, useActivityCalendar } from '../lib/hooks';
 
 interface Connection {
   id: string;
@@ -19,31 +20,34 @@ interface PeerProfileViewProps {
 
 export default function PeerProfileView({ peer, onBack, onToggleConnect }: PeerProfileViewProps) {
   const [selectedYear, setSelectedYear] = useState<2026 | 2025>(2026);
+  const { activity } = useEngineeringActivity(peer.id);
+  const { days: activityDays } = useActivityCalendar(peer.id);
 
-  // Generate a distinct mock contribution grid based on peer's name length to make it unique
-  const generatePeerContributions = () => {
+  // Real GitHub-style contribution grid built from this peer's actual post activity.
+  const buildContributionGrid = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = new Date(today);
+    start.setDate(start.getDate() - 370);
+    start.setDate(start.getDate() - start.getDay());
+
     const grid: number[][] = [];
-    const seed = peer.name.length;
+    const cursor = new Date(start);
     for (let w = 0; w < 53; w++) {
       const week: number[] = [];
       for (let d = 0; d < 7; d++) {
-        let val = 0;
-        const randomFactor = Math.random();
-        // Shift active spots depending on the seed to give each user a different heat map
-        const activeWeek = (w + seed) % 7 === 0 || (w >= 20 && w <= 26);
-        if (activeWeek) {
-          val = randomFactor > 0.7 ? 3 : (randomFactor > 0.4 ? 2 : 1);
-        } else {
-          val = randomFactor > 0.94 ? 2 : (randomFactor > 0.8 ? 1 : 0);
-        }
-        week.push(val);
+        const key = cursor.toISOString().slice(0, 10);
+        const count = activityDays.get(key) ?? 0;
+        const level = count === 0 ? 0 : count === 1 ? 1 : count === 2 ? 2 : count <= 4 ? 3 : 4;
+        week.push(level);
+        cursor.setDate(cursor.getDate() + 1);
       }
       grid.push(week);
     }
     return grid;
   };
 
-  const contributionGrid = generatePeerContributions();
+  const contributionGrid = buildContributionGrid();
 
   const getCellColor = (level: number) => {
     switch (level) {
@@ -342,9 +346,9 @@ export default function PeerProfileView({ peer, onBack, onToggleConnect }: PeerP
       {/* Developer Stats & Progression Dashboard */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
         
-        {/* Progression & Streak Metrics Panel */}
-        <div 
-          style={{ 
+        {/* Engineering Activity Panel — real, GitHub-contribution-style metrics */}
+        <div
+          style={{
             backgroundColor: 'var(--color-surface)',
             border: '1px solid var(--color-dark-border)',
             borderRadius: '20px',
@@ -356,44 +360,29 @@ export default function PeerProfileView({ peer, onBack, onToggleConnect }: PeerP
           }}
         >
           <h3 style={{ fontSize: '1.1rem', color: 'var(--color-text-strong)', margin: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Sparkles className="text-amber-400" size={20} />
-            Progression & Streaks
+            <ActivityIcon className="text-amber-400" size={20} />
+            Engineering Activity
           </h3>
-          
+
           <hr style={{ border: 'none', borderTop: '1px solid var(--color-dark-border)' }} />
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', backgroundColor: 'var(--color-surface-elevated)', borderRadius: '12px', border: '1px solid var(--color-dark-border)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Flame className="text-orange-500" size={22} />
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--color-text-strong)', fontWeight: 600 }}>Active Streak</span>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted-light)' }}>Commit consistency</span>
-                </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+            {[
+              { icon: ActivityIcon, label: 'Active Days', value: activity.active_days, color: '#f97316' },
+              { icon: GitBranch, label: 'Projects Built', value: activity.projects_built, color: 'var(--color-primary)' },
+              { icon: BookOpen, label: 'Learning Sessions', value: activity.learning_sessions, color: '#3b82f6' },
+              { icon: GitFork, label: 'Open Source', value: activity.open_source_contributions, color: '#10b981' },
+              { icon: FlaskConical, label: 'Research Activity', value: activity.research_activity, color: '#ec4899' },
+              { icon: Users, label: 'Community', value: activity.community_contributions, color: '#8b5cf6' },
+              { icon: Star, label: 'Reputation', value: activity.reputation_score, color: '#eab308' },
+              { icon: Zap, label: 'AI Impact', value: activity.ai_impact_score, color: '#06b6d4' },
+            ].map(stat => (
+              <div key={stat.label} style={{ padding: '12px', backgroundColor: 'var(--color-surface-elevated)', borderRadius: '12px', border: '1px solid var(--color-dark-border)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <stat.icon size={16} style={{ color: stat.color }} />
+                <span style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--color-text-strong)' }}>{stat.value.toLocaleString()}</span>
+                <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted-light)', fontWeight: 600 }}>{stat.label}</span>
               </div>
-              <span style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f97316' }}>{peer.name.length * 2} Days</span>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', backgroundColor: 'var(--color-surface-elevated)', borderRadius: '12px', border: '1px solid var(--color-dark-border)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Trophy className="text-yellow-500" size={22} />
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--color-text-strong)', fontWeight: 600 }}>Platform Rank</span>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted-light)' }}>Standings group</span>
-                </div>
-              </div>
-              <span style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-primary)' }}>Top {peer.name.length > 10 ? '5%' : '12%'}</span>
-            </div>
-
-            <div style={{ padding: '14px', backgroundColor: 'var(--color-surface-elevated)', borderRadius: '12px', border: '1px solid var(--color-dark-border)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-                <span style={{ color: 'var(--color-text-muted-light)', fontWeight: 600 }}>Experience Points</span>
-                <span style={{ color: 'var(--color-text-strong)', fontWeight: 700 }}>{peer.name.length * 1200} XP</span>
-              </div>
-              <div style={{ height: '8px', backgroundColor: '#e5e7eb', borderRadius: '4px', overflow: 'hidden', position: 'relative' }}>
-                <div style={{ width: '65%', height: '100%', backgroundColor: 'var(--color-primary)', borderRadius: '4px' }} />
-              </div>
-            </div>
+            ))}
           </div>
         </div>
 
