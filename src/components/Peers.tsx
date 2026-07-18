@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { UserPlus, UserCheck } from 'lucide-react';
 import Avatar from './Avatar';
 import PeerProfileView from './PeerProfileView';
+import type { Profile } from '../lib/supabase';
 
 interface Connection {
   id: string;
@@ -16,9 +17,10 @@ interface PeersProps {
   connections: Connection[];
   handleToggleConnect: (id: string) => void;
   searchQuery: string;
+  currentUser: Profile;
 }
 
-export default function Peers({ connections, handleToggleConnect, searchQuery }: PeersProps) {
+export default function Peers({ connections, handleToggleConnect, searchQuery, currentUser }: PeersProps) {
   const [loading, setLoading] = useState(true);
   const [selectedPeer, setSelectedPeer] = useState<Connection | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -54,8 +56,9 @@ export default function Peers({ connections, handleToggleConnect, searchQuery }:
 
   if (activePeer) {
     return (
-      <PeerProfileView 
+      <PeerProfileView
         peer={activePeer}
+        currentUser={currentUser}
         onBack={() => setSelectedPeer(null)}
         onToggleConnect={handleToggleConnect}
       />

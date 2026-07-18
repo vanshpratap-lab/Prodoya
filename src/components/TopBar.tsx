@@ -1,13 +1,11 @@
 import { useState } from 'react';
-import { Menu, Search, Bell, Sparkles } from 'lucide-react';
+import { Menu, Bell, Sparkles } from 'lucide-react';
 import Avatar from './Avatar';
 import type { Profile } from '../lib/supabase';
 
 interface TopBarProps {
   activeTab: 'home' | 'network' | 'rank' | 'messages' | 'profile' | 'activity' | 'notifications' | 'ai';
   setActiveTab: (tab: 'home' | 'network' | 'rank' | 'messages' | 'profile' | 'activity' | 'notifications' | 'ai') => void;
-  searchQuery: string;
-  setSearchQuery: (query: string) => void;
   setSidebarOpen: (open: (prev: boolean) => boolean) => void;
   notificationsCount: number;
   profile: Profile;
@@ -17,14 +15,11 @@ interface TopBarProps {
 export default function TopBar({
   activeTab,
   setActiveTab,
-  searchQuery,
-  setSearchQuery,
   setSidebarOpen,
   notificationsCount,
   profile,
   onSignOut,
 }: TopBarProps) {
-  const [searchFocused, setSearchFocused] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
   return (
@@ -38,26 +33,6 @@ export default function TopBar({
         >
           <Menu size={22} />
         </button>
-
-        <div 
-          className={`top-bar-search-wrapper ${searchFocused ? 'focused' : ''}`}
-          style={{
-            width: searchFocused ? '360px' : '280px',
-            transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-          }}
-        >
-          <Search size={16} className="top-bar-search-icon" />
-          <input 
-            type="text" 
-            placeholder="Search feed, tags, or members..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onFocus={() => setSearchFocused(true)}
-            onBlur={() => setSearchFocused(false)}
-            className="top-bar-search-input"
-            aria-label="Search"
-          />
-        </div>
       </div>
 
       <nav className="top-bar-nav">
@@ -91,7 +66,7 @@ export default function TopBar({
           onClick={() => setActiveTab('messages')}
           style={{ background: 'none', border: 'none', fontWeight: 600, fontFamily: 'var(--font-sans)', fontSize: '0.95rem' }}
         >
-          Dev Collaboration
+          Messages
         </button>
         <button
           type="button"

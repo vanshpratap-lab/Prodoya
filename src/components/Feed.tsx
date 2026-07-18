@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { Video, Image as ImageIcon, X, Loader2 } from 'lucide-react';
+import { Video, Image as ImageIcon, X, Loader2, Search, Mic, Plus } from 'lucide-react';
 import Avatar from './Avatar';
 import type { Profile } from '../lib/supabase';
-import { uploadPostMedia } from '../lib/hooks';
+import { uploadPostMedia, MAX_POST_IMAGES } from '../lib/hooks';
 import PostCard, { type FeedPost } from './PostCard';
+import EmojiPicker from './EmojiPicker';
 
 interface FeedProps {
   feedPosts: FeedPost[];
@@ -16,11 +17,11 @@ interface FeedProps {
     text: string,
     difficulty: 'beginner' | 'intermediate' | 'advanced',
     category: string,
-    extraData?: { imageUrl?: string; videoUrl?: string },
+    extraData?: { imageUrls?: string[]; videoUrl?: string },
   ) => void;
   searchQuery: string;
+  setSearchQuery: (query: string) => void;
   feedFilter: 'all' | 'aiml' | 'webdev' | 'opensource' | 'hackathons';
-  setFeedFilter: (filter: 'all' | 'aiml' | 'webdev' | 'opensource' | 'hackathons') => void;
   currentUser: Profile;
 }
 
@@ -33,24 +34,28 @@ export default function Feed({
   handleBlockUser,
   handleCreatePost,
   searchQuery,
+  setSearchQuery,
   feedFilter,
-  setFeedFilter,
   currentUser,
 }: FeedProps) {
   const [newPostText, setNewPostText] = useState('');
   const [difficulty, setDifficulty] = useState<'beginner' | 'intermediate' | 'advanced'>('intermediate');
   const [category, setCategory] = useState('webdev');
   const [composerExpanded, setComposerExpanded] = useState(false);
+  const [showComposerWidget, setShowComposerWidget] = useState(false);
 
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState<'image' | 'video' | null>(null);
+  const [uploadingCount, setUploadingCount] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
   const [loading, setLoading] = useState(true);
+  
+
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 600);
     return () => clearTimeout(timer);
@@ -60,20 +65,38 @@ export default function Feed({
   const pickVideo = () => videoInputRef.current?.click();
 
   const onImageSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files ?? []);
     e.target.value = '';
-    if (!file) return;
-    setUploadError(null);
+    if (files.length === 0) return;
+
+    const remainingSlots = MAX_POST_IMAGES - imageUrls.length;
+    if (remainingSlots <= 0) {
+      setUploadError(`You can add up to ${MAX_POST_IMAGES} images per post.`);
+      return;
+    }
+    const toUpload = files.slice(0, remainingSlots);
+    if (files.length > remainingSlots) {
+      setUploadError(`Only ${remainingSlots} more image${remainingSlots === 1 ? '' : 's'} allowed (max ${MAX_POST_IMAGES} per post) — the rest were skipped.`);
+    } else {
+      setUploadError(null);
+    }
+
     setUploading('image');
+    setUploadingCount(toUpload.length);
     setComposerExpanded(true);
     try {
-      const url = await uploadPostMedia(currentUser.id, file);
-      setImageUrl(url);
+      const urls = await Promise.all(toUpload.map(file => uploadPostMedia(currentUser.id, file)));
+      setImageUrls(prev => [...prev, ...urls]);
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Failed to upload image.');
     } finally {
       setUploading(null);
+      setUploadingCount(0);
     }
+  };
+
+  const removeImage = (index: number) => {
+    setImageUrls(prev => prev.filter((_, i) => i !== index));
   };
 
   const onVideoSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -98,14 +121,15 @@ export default function Feed({
     if (!newPostText.trim() || uploading) return;
 
     handleCreatePost(newPostText, difficulty, category, {
-      imageUrl: imageUrl ?? undefined,
+      imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
       videoUrl: videoUrl ?? undefined,
     });
 
     setNewPostText('');
-    setImageUrl(null);
+    setImageUrls([]);
     setVideoUrl(null);
     setComposerExpanded(false);
+    setShowComposerWidget(false);
   };
 
   const filteredFeedPosts = feedPosts.filter(post => {
@@ -125,153 +149,284 @@ export default function Feed({
   });
 
   return (
-    <div className="feed-layout-container">
-      {/* Category Filter */}
-      <div className="feed-header-filter">
-        <span className="feed-filter-title">Proof-of-work Feed</span>
-        <div className="feed-filter-tabs">
-          {(['all', 'aiml', 'webdev', 'opensource', 'hackathons'] as const).map(f => (
-            <button
-              key={f}
-              type="button"
-              className={`feed-filter-btn ${feedFilter === f ? 'active' : ''}`}
-              onClick={() => setFeedFilter(f)}
-            >
-              {f === 'all' ? 'All' : f === 'aiml' ? 'AI/ML' : f === 'webdev' ? 'WebDev' : f === 'opensource' ? 'Open Source' : 'Hackathons'}
-            </button>
-          ))}
+    <div className="feed-layout-container" style={{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '24px',
+      padding: '24px',
+      maxWidth: '820px',
+      margin: '0 auto',
+      width: '100%',
+    }}>
+      {/* Search and Action Bar */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+        <div style={{
+          background: 'var(--color-surface)',
+          borderRadius: '999px',
+          display: 'flex',
+          alignItems: 'center',
+          padding: '12px 20px',
+          gap: '12px',
+          border: '1px solid var(--color-dark-border)',
+          flex: 1,
+          boxShadow: 'var(--shadow-sm)',
+          position: 'relative'
+        }}>
+          <Search size={18} style={{ color: 'var(--color-text-muted-light)' }} />
+          <input
+            type="text"
+            placeholder="Search..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              background: 'none',
+              border: 'none',
+              outline: 'none',
+              color: 'var(--color-text-light)',
+              fontSize: '0.92rem',
+              width: '100%'
+            }}
+          />
+          <Mic size={18} style={{ color: 'var(--color-text-muted-light)', cursor: 'pointer', marginLeft: 'auto' }} />
         </div>
+        <button
+          type="button"
+          onClick={() => setShowComposerWidget(prev => !prev)}
+          style={{
+            background: 'linear-gradient(135deg, var(--color-primary), #a29bfe)',
+            color: 'var(--color-on-primary)',
+            border: 'none',
+            borderRadius: '999px',
+            padding: '12px 24px',
+            fontSize: '0.9rem',
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            cursor: 'pointer',
+            boxShadow: 'var(--shadow-md)',
+            transition: 'var(--transition)'
+          }}
+          className="create-post-btn"
+        >
+          <Plus size={16} />
+          Create new post
+        </button>
       </div>
 
-      {/* Composer */}
-      <form className="feed-create-post-widget" onSubmit={onSubmit}>
-        <div className="feed-create-input-row">
-          <div className="feed-create-avatar">
-            <Avatar name={currentUser.full_name} avatarUrl={currentUser.avatar_url} size={42} />
-          </div>
-          <textarea
-            className="feed-create-textarea"
-            placeholder="Share a project update, code snippet, or AI learning milestone..."
-            value={newPostText}
-            onChange={(e) => setNewPostText(e.target.value)}
-            onFocus={() => setComposerExpanded(true)}
-            required
-            style={composerExpanded ? { height: '96px' } : undefined}
-          />
-        </div>
 
-        {/* Image preview */}
-        {(uploading === 'image' || imageUrl) && (
-          <div style={{ padding: '0 0 0 54px', position: 'relative' }}>
-            <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--color-dark-border)', maxWidth: '320px' }}>
-              {uploading === 'image' ? (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '140px', background: 'var(--color-surface-elevated)', gap: '8px', color: 'var(--color-text-muted-light)', fontSize: '0.82rem' }}>
-                  <Loader2 size={16} className="animate-spin" />
-                  Uploading image…
-                </div>
-              ) : (
-                <>
-                  <img src={imageUrl ?? undefined} alt="Attachment preview" style={{ width: '100%', maxHeight: '220px', objectFit: 'cover', display: 'block' }} />
-                  <button
-                    type="button"
-                    onClick={() => setImageUrl(null)}
-                    aria-label="Remove image"
-                    style={{ position: 'absolute', top: '8px', right: '8px', width: '26px', height: '26px', borderRadius: '50%', border: 'none', background: 'rgba(15, 23, 42, 0.65)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-                  >
-                    <X size={14} />
-                  </button>
-                </>
-              )}
+      {/* Composer Widget (Toggleable Overlay Card) */}
+      {showComposerWidget && (
+        <form className="feed-create-post-widget" onSubmit={onSubmit} style={{
+          background: 'var(--color-surface)',
+          border: '1px solid var(--color-dark-border)',
+          borderRadius: '20px',
+          padding: '20px',
+          boxShadow: 'var(--shadow-md)',
+          animation: 'slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+        }}>
+          <div className="feed-create-input-row" style={{ display: 'flex', gap: '12px' }}>
+            <div className="feed-create-avatar">
+              <Avatar name={currentUser.full_name} avatarUrl={currentUser.avatar_url} size={42} />
             </div>
-          </div>
-        )}
-
-        {/* Video preview */}
-        {(uploading === 'video' || videoUrl) && (
-          <div style={{ padding: '0 0 0 54px', position: 'relative' }}>
-            <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--color-dark-border)', maxWidth: '320px' }}>
-              {uploading === 'video' ? (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '140px', background: 'var(--color-surface-elevated)', gap: '8px', color: 'var(--color-text-muted-light)', fontSize: '0.82rem' }}>
-                  <Loader2 size={16} className="animate-spin" />
-                  Uploading video…
-                </div>
-              ) : (
-                <>
-                  <video src={videoUrl ?? undefined} controls style={{ width: '100%', maxHeight: '220px', display: 'block', background: '#000' }} />
-                  <button
-                    type="button"
-                    onClick={() => setVideoUrl(null)}
-                    aria-label="Remove video"
-                    style={{ position: 'absolute', top: '8px', right: '8px', width: '26px', height: '26px', borderRadius: '50%', border: 'none', background: 'rgba(15, 23, 42, 0.65)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-                  >
-                    <X size={14} />
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-
-        {uploadError && (
-          <div style={{ padding: '0 0 0 54px', fontSize: '0.8rem', color: 'var(--color-danger)' }}>{uploadError}</div>
-        )}
-
-        <input ref={imageInputRef} type="file" accept="image/*" onChange={onImageSelected} style={{ display: 'none' }} />
-        <input ref={videoInputRef} type="file" accept="video/*" onChange={onVideoSelected} style={{ display: 'none' }} />
-
-        <div className="feed-create-controls" style={{ flexWrap: 'wrap', gap: '10px' }}>
-          <div className="feed-create-options" style={{ flexWrap: 'wrap', rowGap: '8px' }}>
-            <button
-              type="button"
-              onClick={pickVideo}
-              disabled={uploading !== null}
-              className="feed-composer-icon-btn"
-              style={{ color: videoUrl ? '#059669' : 'var(--color-text-muted-light)' }}
-              aria-label="Add a video"
-            >
-              <Video size={17} style={{ color: '#059669' }} />
-              Video
-            </button>
-            <button
-              type="button"
-              onClick={pickImage}
-              disabled={uploading !== null}
-              className="feed-composer-icon-btn"
-              aria-label="Add a photo"
-            >
-              <ImageIcon size={17} style={{ color: '#2563eb' }} />
-              Photo
-            </button>
+            <textarea
+              className="feed-create-textarea"
+              placeholder="Share a project update, code snippet, or AI learning milestone..."
+              value={newPostText}
+              onChange={(e) => setNewPostText(e.target.value)}
+              onFocus={() => setComposerExpanded(true)}
+              required
+              style={{
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                outline: 'none',
+                fontSize: '0.95rem',
+                color: 'var(--color-text-light)',
+                resize: 'none',
+                height: composerExpanded ? '96px' : '44px',
+                transition: 'height 0.2s ease'
+              }}
+            />
           </div>
 
-          {composerExpanded && (
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', animation: 'fadeIn 0.2s ease' }}>
-              <select
-                className="feed-create-select"
-                value={difficulty}
-                onChange={(e) => setDifficulty(e.target.value as any)}
-              >
-                <option value="beginner">Beginner (+10 pts)</option>
-                <option value="intermediate">Intermediate (+20 pts)</option>
-                <option value="advanced">Advanced (+35 pts)</option>
-              </select>
-              <select
-                className="feed-create-select"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-              >
-                <option value="webdev">WebDev</option>
-                <option value="aiml">AI/ML</option>
-                <option value="opensource">OpenSource</option>
-              </select>
+          {/* Image previews — up to MAX_POST_IMAGES, each individually removable */}
+          {(imageUrls.length > 0 || uploading === 'image') && (
+            <div style={{ padding: '0 0 0 54px', marginTop: '10px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {imageUrls.map((url, i) => (
+                  <div key={url} style={{ position: 'relative', width: '90px', height: '90px', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--color-dark-border)' }}>
+                    <img src={url} alt={`Attachment ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(i)}
+                      aria-label={`Remove image ${i + 1}`}
+                      style={{ position: 'absolute', top: '4px', right: '4px', width: '20px', height: '20px', borderRadius: '50%', border: 'none', background: 'rgba(15, 23, 42, 0.7)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                    >
+                      <X size={11} />
+                    </button>
+                  </div>
+                ))}
+                {uploading === 'image' && Array.from({ length: uploadingCount }).map((_, i) => (
+                  <div key={`uploading-${i}`} style={{ width: '90px', height: '90px', borderRadius: '10px', border: '1px solid var(--color-dark-border)', background: 'var(--color-surface-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Loader2 size={16} className="animate-spin" style={{ color: 'var(--color-text-muted-light)' }} />
+                  </div>
+                ))}
+              </div>
+              <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted-light)', marginTop: '4px', display: 'block' }}>
+                {imageUrls.length}/{MAX_POST_IMAGES} images
+              </span>
             </div>
           )}
 
-          <button type="submit" className="feed-post-btn" disabled={uploading !== null} style={{ marginLeft: 'auto' }}>
-            Post Update
-          </button>
-        </div>
-      </form>
+          {/* Video preview */}
+          {(uploading === 'video' || videoUrl) && (
+            <div style={{ padding: '0 0 0 54px', position: 'relative', marginTop: '10px' }}>
+              <div style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--color-dark-border)', maxWidth: '320px' }}>
+                {uploading === 'video' ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '140px', background: 'var(--color-surface-elevated)', gap: '8px', color: 'var(--color-text-muted-light)', fontSize: '0.82rem' }}>
+                    <Loader2 size={16} className="animate-spin" />
+                    Uploading video…
+                  </div>
+                ) : (
+                  <>
+                    <video src={videoUrl ?? undefined} controls style={{ width: '100%', maxHeight: '220px', display: 'block', background: '#000' }} />
+                    <button
+                      type="button"
+                      onClick={() => setVideoUrl(null)}
+                      aria-label="Remove video"
+                      style={{ position: 'absolute', top: '8px', right: '8px', width: '26px', height: '26px', borderRadius: '50%', border: 'none', background: 'rgba(15, 23, 42, 0.65)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                    >
+                      <X size={14} />
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {uploadError && (
+            <div style={{ padding: '0 0 0 54px', fontSize: '0.8rem', color: 'var(--color-danger)', marginTop: '8px' }}>{uploadError}</div>
+          )}
+
+          <input ref={imageInputRef} type="file" accept="image/*" multiple onChange={onImageSelected} style={{ display: 'none' }} />
+          <input ref={videoInputRef} type="file" accept="video/*" onChange={onVideoSelected} style={{ display: 'none' }} />
+
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            borderTop: '1px solid var(--color-dark-border)',
+            paddingTop: '14px',
+            marginTop: '14px',
+            flexWrap: 'wrap',
+            gap: '10px'
+          }}>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                type="button"
+                onClick={pickVideo}
+                disabled={uploading !== null}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--color-text-muted-light)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '0.8rem',
+                  fontWeight: 600
+                }}
+              >
+                <Video size={16} style={{ color: '#059669' }} />
+                Video
+              </button>
+              <button
+                type="button"
+                onClick={pickImage}
+                disabled={uploading !== null || imageUrls.length >= MAX_POST_IMAGES}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: imageUrls.length >= MAX_POST_IMAGES ? 'var(--color-text-muted)' : 'var(--color-text-muted-light)',
+                  cursor: uploading !== null || imageUrls.length >= MAX_POST_IMAGES ? 'default' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '0.8rem',
+                  fontWeight: 600
+                }}
+              >
+                <ImageIcon size={16} style={{ color: imageUrls.length >= MAX_POST_IMAGES ? 'var(--color-text-muted)' : '#2563eb' }} />
+                Photo{imageUrls.length > 0 ? ` (${imageUrls.length}/${MAX_POST_IMAGES})` : ''}
+              </button>
+              <EmojiPicker onSelect={emoji => setNewPostText(prev => prev + emoji)} />
+            </div>
+
+            {composerExpanded && (
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <select
+                  value={difficulty}
+                  onChange={(e) => setDifficulty(e.target.value as any)}
+                  style={{
+                    background: 'var(--color-bg-home)',
+                    border: '1px solid var(--color-dark-border)',
+                    borderRadius: '8px',
+                    padding: '4px 8px',
+                    fontSize: '0.78rem',
+                    color: 'var(--color-text-light)',
+                    fontWeight: 600
+                  }}
+                >
+                  <option value="beginner">Beginner (+10 pts)</option>
+                  <option value="intermediate">Intermediate (+20 pts)</option>
+                  <option value="advanced">Advanced (+35 pts)</option>
+                </select>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  style={{
+                    background: 'var(--color-bg-home)',
+                    border: '1px solid var(--color-dark-border)',
+                    borderRadius: '8px',
+                    padding: '4px 8px',
+                    fontSize: '0.78rem',
+                    color: 'var(--color-text-light)',
+                    fontWeight: 600
+                  }}
+                >
+                  <option value="webdev">WebDev</option>
+                  <option value="aiml">AI/ML</option>
+                  <option value="opensource">OpenSource</option>
+                </select>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={uploading !== null}
+              style={{
+                background: 'var(--color-primary)',
+                color: 'var(--color-on-primary)',
+                border: 'none',
+                borderRadius: '999px',
+                padding: '6px 18px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              Post Update
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Feeds Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-text-strong)' }}>Feeds</span>
+      </div>
 
       {/* Loading Skeleton States */}
       {loading ? (
@@ -314,3 +469,4 @@ export default function Feed({
     </div>
   );
 }
+

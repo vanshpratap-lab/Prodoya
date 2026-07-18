@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Loader2 } from 'lucide-react';
 import TopBar from './components/TopBar';
 import Sidebar from './components/Sidebar';
+import RightSidebar from './components/RightSidebar';
 import Feed from './components/Feed';
 import Peers from './components/Peers';
 import Rankings from './components/Rankings';
@@ -22,16 +23,16 @@ export default function App() {
   const { session, user, profile, loading: authLoading, refreshProfile, signOut } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'home' | 'network' | 'rank' | 'messages' | 'profile' | 'activity' | 'notifications' | 'ai'>('home');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [feedFilter, setFeedFilter] = useState<'all' | 'aiml' | 'webdev' | 'opensource' | 'hackathons'>('all');
+  const [feedFilter] = useState<'all' | 'aiml' | 'webdev' | 'opensource' | 'hackathons'>('all');
   const [selectedChatId, setSelectedChatId] = useState<number>(1);
   const [typeMessage, setTypeMessage] = useState('');
 
   const userId = user?.id;
   const { feedItems, createPost, toggleLike, toggleRepost, incrementCommentCount, deletePost, blockUser } = usePosts(userId);
   const { connections, toggleConnect, connectionCount } = useConnections(userId);
-  const { chats, sendMessage } = useCommunityChat(userId);
+  const { chats, sendMessage, startDirectChat } = useCommunityChat(userId);
   const { notifications, addNotification } = useNotifications(userId);
   const { rows: leaderboardRows, refetch: refetchLeaderboard } = useLeaderboard();
 
@@ -78,7 +79,7 @@ export default function App() {
     time: formatRelativeTime(p.activity_at),
     githubUrl: p.github_url ?? undefined,
     codeSnippet: p.code_snippet ?? undefined,
-    projectShowcase: p.project_showcase_url ?? undefined,
+    images: p.image_urls ?? [],
     videoUrl: p.video_url ?? undefined,
   }));
 
@@ -86,7 +87,7 @@ export default function App() {
     text: string,
     difficulty: 'beginner' | 'intermediate' | 'advanced',
     category: string,
-    extraData?: { imageUrl?: string; videoUrl?: string },
+    extraData?: { imageUrls?: string[]; videoUrl?: string },
   ) => {
     const points = POINTS_MAP[difficulty];
     try {
@@ -95,7 +96,7 @@ export default function App() {
         ai_difficulty: difficulty,
         ai_points: points,
         tags: [`#${category}`, '#proofOfWork', '#buildInPublic'],
-        project_showcase_url: extraData?.imageUrl,
+        image_urls: extraData?.imageUrls,
         video_url: extraData?.videoUrl,
       });
       await Promise.all([refreshProfile(), refetchLeaderboard()]);
@@ -158,14 +159,14 @@ export default function App() {
     points: profile.points,
   };
 
+  const showRightSidebar = activeTab === 'home';
+
   return (
     <div className="app-container">
-      {/* Top Navigation Bar */}
+      {/* Top Navigation Bar — always visible */}
       <TopBar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
         setSidebarOpen={setSidebarOpen}
         notificationsCount={notifications.length}
         profile={profile}
@@ -173,9 +174,14 @@ export default function App() {
       />
 
       {/* Main Container Wrapper */}
-      <div className="main-wrapper">
+      <div className="main-wrapper" style={{ height: 'calc(100vh - 72px)' }}>
         {activeTab !== 'ai' && (
-          <Sidebar profileStats={profileStats} sidebarOpen={sidebarOpen} profile={profile} />
+          <Sidebar 
+            profileStats={profileStats} 
+            sidebarOpen={sidebarOpen} 
+            profile={profile} 
+            setActiveTab={setActiveTab}
+          />
         )}
 
         {activeTab === 'ai' ? (
@@ -215,14 +221,14 @@ export default function App() {
                 handleBlockUser={blockUser}
                 handleCreatePost={handleCreatePost}
                 searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
                 feedFilter={feedFilter}
-                setFeedFilter={setFeedFilter}
                 currentUser={profile}
               />
             )}
 
             {activeTab === 'network' && (
-              <Peers connections={connections} handleToggleConnect={handleToggleConnect} searchQuery={searchQuery} />
+              <Peers connections={connections} handleToggleConnect={handleToggleConnect} searchQuery={searchQuery} currentUser={profile} />
             )}
 
             {activeTab === 'rank' && <Rankings ranks={ranks} currentUserId={user.id} />}
@@ -235,6 +241,9 @@ export default function App() {
                 typeMessage={typeMessage}
                 setTypeMessage={setTypeMessage}
                 handleSendMessage={handleSendMessage}
+                currentUser={profile}
+                connections={connections}
+                startDirectChat={startDirectChat}
               />
             )}
 
@@ -249,11 +258,23 @@ export default function App() {
                 onDelete={handleDeletePost}
                 onShowAllActivity={() => setActiveTab('activity')}
                 onCreatePost={() => setActiveTab('home')}
+                onProfileUpdated={refreshProfile}
               />
             )}
           </main>
+        )}
+
+        {/* Right Widget Sidebar for home feed only */}
+        {showRightSidebar && (
+          <RightSidebar
+            connections={connections}
+            handleToggleConnect={handleToggleConnect}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+          />
         )}
       </div>
     </div>
   );
 }
+

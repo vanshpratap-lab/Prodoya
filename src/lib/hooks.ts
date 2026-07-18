@@ -5,6 +5,9 @@ import { playNotificationChime } from './sound';
 
 // ─── Posts / Feed ──────────────────────────────────────────────────────────
 
+// Matches the posts_image_urls_max_5 database constraint.
+export const MAX_POST_IMAGES = 5;
+
 export interface RepostEntry {
   post_id: number;
   user_id: string;
@@ -103,10 +106,12 @@ export function usePosts(currentUserId: string | undefined) {
     tags: string[];
     code_snippet?: string;
     github_url?: string;
-    project_showcase_url?: string;
+    image_urls?: string[];
     video_url?: string;
   }) => {
     if (!currentUserId) throw new Error('Not signed in.');
+    // The database enforces this cap too (posts_image_urls_max_6); this just fails fast client-side.
+    const images = (input.image_urls ?? []).slice(0, MAX_POST_IMAGES);
     const { error } = await supabase.from('posts').insert({
       author_id: currentUserId,
       content: input.content.trim(),
@@ -115,7 +120,7 @@ export function usePosts(currentUserId: string | undefined) {
       ai_points: input.ai_points,
       code_snippet: input.code_snippet?.trim() || null,
       github_url: input.github_url?.trim() || null,
-      project_showcase_url: input.project_showcase_url || null,
+      image_urls: images,
       video_url: input.video_url || null,
     });
     if (error) throw error;
@@ -222,6 +227,52 @@ export async function uploadPostMedia(userId: string, file: File): Promise<strin
   return data.publicUrl;
 }
 
+// Uploads a new profile cover/banner image and persists it on the profile row.
+export async function updateProfileCover(userId: string, file: File): Promise<string> {
+  const url = await uploadPostMedia(userId, file);
+  const { error } = await supabase.from('profiles').update({ cover_url: url }).eq('id', userId);
+  if (error) throw error;
+  return url;
+}
+
+// Uploads a new profile (avatar) picture. RLS scopes the update to auth.uid() = id,
+// so this can only ever change the caller's own row regardless of the userId passed.
+export async function updateProfileAvatar(userId: string, file: File): Promise<string> {
+  const url = await uploadPostMedia(userId, file);
+  const { error } = await supabase.from('profiles').update({ avatar_url: url }).eq('id', userId);
+  if (error) throw error;
+  return url;
+}
+
+export interface EditableProfileFields {
+  full_name: string;
+  bio: string;
+  role: string;
+  college: string;
+  github_url: string;
+  linkedin_url: string;
+  twitter_url: string;
+}
+
+// Updates the caller's own editable profile fields. Empty strings are stored as
+// null for the optional link fields so "not connected" stays genuinely empty
+// rather than an empty-string placeholder.
+export async function updateProfileDetails(userId: string, fields: EditableProfileFields) {
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      full_name: fields.full_name.trim(),
+      bio: fields.bio.trim(),
+      role: fields.role.trim(),
+      college: fields.college.trim(),
+      github_url: fields.github_url.trim(),
+      linkedin_url: fields.linkedin_url.trim() || null,
+      twitter_url: fields.twitter_url.trim() || null,
+    })
+    .eq('id', userId);
+  if (error) throw error;
+}
+
 // ─── Post comments ──────────────────────────────────────────────────────────
 
 export function usePostComments(postId: number, enabled: boolean) {
@@ -322,6 +373,130 @@ export function useActivityCalendar(userId: string | undefined) {
   }, [fetchCalendar]);
 
   return { days, loading, refetch: fetchCalendar };
+}
+
+// ─── Single peer profile + their posts (for viewing someone else's profile) ─
+
+export function usePeerProfile(peerId: string | undefined) {
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [connectionCount, setConnectionCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!peerId) {
+      setProfile(null);
+      setConnectionCount(0);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    Promise.all([
+      supabase.from('profiles').select('*').eq('id', peerId).maybeSingle(),
+      supabase
+        .from('connections')
+        .select('id', { count: 'exact', head: true })
+        .or(`requester_id.eq.${peerId},addressee_id.eq.${peerId}`),
+    ]).then(([profileResult, connResult]) => {
+      if (!cancelled) {
+        setProfile(profileResult.data as Profile | null);
+        setConnectionCount(connResult.count ?? 0);
+        setLoading(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [peerId]);
+
+  return { profile, connectionCount, loading };
+}
+
+export function usePeerPosts(peerId: string | undefined, currentUserId: string | undefined) {
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchPosts = useCallback(async () => {
+    if (!peerId) {
+      setPosts([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const { data: postsData } = await supabase
+      .from('posts')
+      .select('*, author:profiles!posts_author_id_fkey(*)')
+      .eq('author_id', peerId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    const list = postsData || [];
+    const postIds = list.map((p: any) => p.id);
+    const [{ data: likes }, { data: reposts }, { data: comments }] = postIds.length
+      ? await Promise.all([
+          supabase.from('post_likes').select('post_id, user_id').in('post_id', postIds),
+          supabase.from('post_reposts').select('post_id, user_id').in('post_id', postIds),
+          supabase.from('post_comments').select('post_id').in('post_id', postIds),
+        ])
+      : [{ data: [] as { post_id: number; user_id: string }[] }, { data: [] as { post_id: number; user_id: string }[] }, { data: [] as { post_id: number }[] }];
+
+    const likeCounts = new Map<number, number>();
+    const likedByMe = new Set<number>();
+    (likes || []).forEach(l => {
+      likeCounts.set(l.post_id, (likeCounts.get(l.post_id) || 0) + 1);
+      if (l.user_id === currentUserId) likedByMe.add(l.post_id);
+    });
+    const repostCounts = new Map<number, number>();
+    const repostedByMe = new Set<number>();
+    (reposts || []).forEach(r => {
+      repostCounts.set(r.post_id, (repostCounts.get(r.post_id) || 0) + 1);
+      if (r.user_id === currentUserId) repostedByMe.add(r.post_id);
+    });
+    const commentCounts = new Map<number, number>();
+    (comments || []).forEach(c => {
+      commentCounts.set(c.post_id, (commentCounts.get(c.post_id) || 0) + 1);
+    });
+
+    setPosts(
+      list.map((p: any) => ({
+        ...p,
+        like_count: likeCounts.get(p.id) || 0,
+        has_liked: likedByMe.has(p.id),
+        repost_count: repostCounts.get(p.id) || 0,
+        has_reposted: repostedByMe.has(p.id),
+        comment_count: commentCounts.get(p.id) || 0,
+      })),
+    );
+    setLoading(false);
+  }, [peerId, currentUserId]);
+
+  useEffect(() => {
+    fetchPosts();
+  }, [fetchPosts]);
+
+  const toggleLike = async (postId: number) => {
+    if (!currentUserId) return;
+    setPosts(prev =>
+      prev.map(p => (p.id === postId ? { ...p, has_liked: !p.has_liked, like_count: p.like_count + (p.has_liked ? -1 : 1) } : p)),
+    );
+    const { error } = await supabase.rpc('toggle_post_like', { p_post_id: postId });
+    if (error) await fetchPosts();
+  };
+
+  const toggleRepost = async (postId: number) => {
+    if (!currentUserId) return;
+    setPosts(prev =>
+      prev.map(p => (p.id === postId ? { ...p, has_reposted: !p.has_reposted, repost_count: p.repost_count + (p.has_reposted ? -1 : 1) } : p)),
+    );
+    const { error } = await supabase.rpc('toggle_post_repost', { p_post_id: postId });
+    if (error) await fetchPosts();
+  };
+
+  const incrementCommentCount = (postId: number) => {
+    setPosts(prev => prev.map(p => (p.id === postId ? { ...p, comment_count: p.comment_count + 1 } : p)));
+  };
+
+  return { posts, loading, toggleLike, toggleRepost, incrementCommentCount, refetch: fetchPosts };
 }
 
 // ─── Peers / Connections ───────────────────────────────────────────────────
@@ -428,6 +603,8 @@ export interface ChatChannelView {
   subtext: string;
   time: string;
   messages: ChatMessageView[];
+  /** Set only for real 1-on-1 DMs (see chats.participant_1/2). Null for public/community channels. */
+  peerId: string | null;
 }
 
 const AVATAR_PALETTE = ['#7c3aed', '#3b82f6', '#059669', '#d97706', '#db2777', '#0891b2'];
@@ -452,6 +629,8 @@ export function useCommunityChat(currentUserId: string | undefined) {
     const grouped: ChatChannelView[] = channelList.map((c, idx) => {
       const chatMessages = messageList.filter(m => m.chat_id === c.id);
       const last = chatMessages[chatMessages.length - 1];
+      const isDirect = c.participant_1 !== null && c.participant_2 !== null;
+      const peerId = isDirect ? (c.participant_1 === currentUserId ? c.participant_2 : c.participant_1) : null;
       return {
         id: c.id,
         name: c.name,
@@ -461,6 +640,7 @@ export function useCommunityChat(currentUserId: string | undefined) {
         avatarText: c.emoji,
         subtext: last ? `${last.sender?.full_name ?? 'Someone'}: ${last.text}` : 'No messages yet — say hi!',
         time: last ? formatClockTime(last.created_at) : '',
+        peerId,
         messages: chatMessages.map(m => ({
           id: m.id,
           text: m.text,
@@ -482,8 +662,11 @@ export function useCommunityChat(currentUserId: string | undefined) {
 
   useEffect(() => {
     const channel = supabase
-      .channel('messages-all')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
+      .channel('chats-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
+        fetchAll();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chats' }, () => {
         fetchAll();
       })
       .subscribe();
@@ -497,7 +680,20 @@ export function useCommunityChat(currentUserId: string | undefined) {
     await supabase.from('messages').insert({ chat_id: chatId, sender_id: currentUserId, text: text.trim() });
   };
 
-  return { chats, loading, sendMessage };
+  // Opens (or creates) a private DM with a connected peer. Server-enforced:
+  // only works between users who are actually connected (see get_or_create_direct_chat).
+  const startDirectChat = async (peerId: string): Promise<number | null> => {
+    if (!currentUserId) return null;
+    const { data, error } = await supabase.rpc('get_or_create_direct_chat', { p_peer_id: peerId });
+    if (error || data == null) {
+      await fetchAll();
+      return null;
+    }
+    await fetchAll();
+    return data as number;
+  };
+
+  return { chats, loading, sendMessage, startDirectChat };
 }
 
 // ─── Notifications ──────────────────────────────────────────────────────────

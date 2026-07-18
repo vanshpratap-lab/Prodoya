@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type FormEvent } from 'react';
-import { Sparkles, ArrowUp, Loader2, Plus, Search, MessageSquare } from 'lucide-react';
+import { Loader2, Plus, Search, MessageSquare, Send, Paperclip } from 'lucide-react';
 import { supabase, type Profile } from '../lib/supabase';
 
 interface ChatMessage {
@@ -17,13 +17,6 @@ interface AiChatProps {
   currentUser: Profile;
   sidebarOpen: boolean;
 }
-
-const SUGGESTIONS = [
-  'Who has the highest proof-of-work score right now?',
-  'Find engineers who work with AI/ML.',
-  'Summarize what people are building this week.',
-  'Who should I connect with for a web-dev project?',
-];
 
 export default function AiChat({ currentUser, sidebarOpen }: AiChatProps) {
   const storageKey = `ai-convos-${currentUser.id}`;
@@ -124,69 +117,183 @@ export default function AiChat({ currentUser, sidebarOpen }: AiChatProps) {
   const filteredConvos = conversations.filter(c => c.title.toLowerCase().includes(search.toLowerCase()));
 
   const inputBox = (centered: boolean) => (
-    <form
-      onSubmit={onSubmit}
-      style={{
-        width: '100%',
-        maxWidth: '720px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '8px',
-        background: 'var(--color-surface)',
-        border: '1px solid var(--color-dark-border)',
-        borderRadius: '20px',
-        padding: '16px 16px 12px',
-        minHeight: centered ? '112px' : undefined,
-        boxShadow: '0 2px 12px rgba(15, 23, 42, 0.06)',
-      }}
-    >
-      <textarea
-        value={input}
-        onChange={e => setInput(e.target.value)}
-        onKeyDown={e => {
-          if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            send(input);
-          }
-        }}
-        placeholder="Ask anything about the network…"
-        rows={centered ? 2 : 1}
+    <div style={{ position: 'relative', width: '100%', maxWidth: '720px', display: 'flex', justifyContent: 'center', zIndex: 10 }}>
+      {/* Peach glow left */}
+      <div style={{
+        position: 'absolute',
+        left: '12%',
+        top: '-20px',
+        width: '180px',
+        height: '100px',
+        borderRadius: '50%',
+        background: 'rgba(255, 127, 80, 0.18)',
+        filter: 'blur(45px)',
+        zIndex: 1,
+        pointerEvents: 'none'
+      }} />
+      {/* Light blue glow right */}
+      <div style={{
+        position: 'absolute',
+        right: '12%',
+        top: '-20px',
+        width: '180px',
+        height: '100px',
+        borderRadius: '50%',
+        background: 'rgba(100, 149, 237, 0.22)',
+        filter: 'blur(45px)',
+        zIndex: 1,
+        pointerEvents: 'none'
+      }} />
+
+      {/* Main glass input form */}
+      <form
+        onSubmit={onSubmit}
         style={{
-          flex: 1,
-          resize: 'none',
-          background: 'transparent',
-          border: 'none',
-          outline: 'none',
-          color: 'var(--color-text-strong)',
-          fontSize: '1rem',
-          fontFamily: 'var(--font-sans)',
-          lineHeight: 1.5,
-          maxHeight: '180px',
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+          background: 'rgba(255, 255, 255, 0.88)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          border: '1px solid rgba(147, 112, 219, 0.28)',
+          borderRadius: '24px',
+          padding: '20px 20px 14px',
+          boxShadow: '0 12px 40px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.02)',
+          zIndex: 2,
+          position: 'relative'
         }}
-      />
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <button
-          type="submit"
-          disabled={!input.trim() || sending}
-          aria-label="Send message"
-          style={{
-            width: '36px',
-            height: '36px',
-            borderRadius: '10px',
-            border: input.trim() && !sending ? 'none' : '1px solid var(--color-dark-border)',
-            background: input.trim() && !sending ? 'var(--color-primary)' : 'var(--color-surface-elevated)',
-            color: input.trim() && !sending ? 'var(--color-on-primary)' : 'var(--color-text-muted-light)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: input.trim() && !sending ? 'pointer' : 'default',
-            transition: 'background 0.2s ease',
+      >
+        <textarea
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              send(input);
+            }
           }}
-        >
-          {sending ? <Loader2 size={18} className="animate-spin" /> : <ArrowUp size={18} />}
-        </button>
-      </div>
-    </form>
+          placeholder="Ask anything"
+          rows={centered ? 2 : 1}
+          style={{
+            flex: 1,
+            resize: 'none',
+            background: 'transparent',
+            border: 'none',
+            outline: 'none',
+            color: '#1a1d20',
+            fontSize: '0.96rem',
+            fontFamily: 'var(--font-sans)',
+            fontWeight: 500,
+            lineHeight: 1.5,
+            maxHeight: '180px',
+          }}
+        />
+
+        {/* Action Row */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginTop: '4px'
+        }}>
+          {/* Left Buttons Row */}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {/* Paperclip Attachment button */}
+            <button
+              type="button"
+              onClick={() => alert('Attachments triggered')}
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                border: '1px solid rgba(0, 0, 0, 0.04)',
+                background: '#ffffff',
+                color: '#343a40',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)',
+                transition: 'background 0.2s'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.background = '#f1f3f5'}
+              onMouseOut={(e) => e.currentTarget.style.background = '#ffffff'}
+            >
+              <Paperclip size={14} />
+            </button>
+
+            {/* Plus button */}
+            <button
+              type="button"
+              onClick={() => alert('Add tool triggered')}
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                border: '1px solid rgba(0, 0, 0, 0.04)',
+                background: '#ffffff',
+                color: '#343a40',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)',
+                transition: 'background 0.2s'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.background = '#f1f3f5'}
+              onMouseOut={(e) => e.currentTarget.style.background = '#ffffff'}
+            >
+              <Plus size={14} />
+            </button>
+          </div>
+
+          {/* Right Button: Send or Voice input */}
+          <button
+            type="submit"
+            disabled={sending}
+            style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '8px',
+              border: '1px solid rgba(0, 0, 0, 0.04)',
+              background: input.trim() && !sending ? 'var(--color-primary)' : '#ffffff',
+              color: input.trim() && !sending ? 'var(--color-on-primary)' : '#343a40',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)',
+              transition: 'all 0.2s'
+            }}
+            onMouseOver={(e) => {
+              if (!input.trim() || sending) {
+                e.currentTarget.style.background = '#f1f3f5';
+              }
+            }}
+            onMouseOut={(e) => {
+              if (!input.trim() || sending) {
+                e.currentTarget.style.background = '#ffffff';
+              }
+            }}
+          >
+            {sending ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : input.trim() ? (
+              <Send size={13} />
+            ) : (
+              /* Custom dynamic waveform SVG */
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="4" y1="9" x2="4" y2="15" />
+                <line x1="9" y1="6" x2="9" y2="18" />
+                <line x1="14" y1="4" x2="14" y2="20" />
+                <line x1="19" y1="8" x2="19" y2="16" />
+              </svg>
+            )}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 
   return (
@@ -301,15 +408,12 @@ export default function AiChat({ currentUser, sidebarOpen }: AiChatProps) {
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '28px',
+              gap: '24px',
               padding: '0 20px',
               animation: 'fadeIn 0.4s ease',
             }}
           >
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: '54px', height: '54px', borderRadius: '16px', background: 'linear-gradient(135deg, #7c3aed, #2563eb)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Sparkles size={26} style={{ color: '#fff' }} />
-              </div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
               <h1 style={{ color: 'var(--color-text-strong)', fontFamily: 'var(--font-display)', fontSize: '1.8rem', margin: 0, textAlign: 'center' }}>
                 Hi {currentUser.full_name.split(' ')[0]}, ask the network anything
               </h1>
@@ -317,30 +421,34 @@ export default function AiChat({ currentUser, sidebarOpen }: AiChatProps) {
 
             {inputBox(true)}
 
-            {error && <div style={{ color: 'var(--color-danger)', fontSize: '0.82rem', maxWidth: '620px', textAlign: 'center', marginTop: '-14px' }}>{error}</div>}
+            {/* Centered Send message button under typing bar */}
+            <button
+              type="button"
+              onClick={() => send(input)}
+              disabled={!input.trim() || sending}
+              style={{
+                background: input.trim() && !sending ? '#000000' : '#e9ecef',
+                color: input.trim() && !sending ? '#ffffff' : '#8a8d91',
+                border: 'none',
+                borderRadius: '16px',
+                padding: '10px 24px',
+                fontSize: '0.86rem',
+                fontWeight: 700,
+                cursor: input.trim() && !sending ? 'pointer' : 'default',
+                transition: 'opacity 0.2s',
+                boxShadow: input.trim() && !sending ? '0 4px 12px rgba(0, 0, 0, 0.1)' : 'none'
+              }}
+              onMouseOver={(e) => {
+                if (input.trim() && !sending) e.currentTarget.style.opacity = '0.85';
+              }}
+              onMouseOut={(e) => {
+                if (input.trim() && !sending) e.currentTarget.style.opacity = '1';
+              }}
+            >
+              Send message
+            </button>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center', maxWidth: '720px' }}>
-              {SUGGESTIONS.map(s => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => send(s)}
-                  style={{
-                    background: 'var(--color-surface)',
-                    border: '1px solid var(--color-dark-border)',
-                    borderRadius: '14px',
-                    padding: '10px 14px',
-                    color: 'var(--color-text-light)',
-                    fontSize: '0.85rem',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    boxShadow: '0 1px 4px rgba(15, 23, 42, 0.04)',
-                  }}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
+            {error && <div style={{ color: 'var(--color-danger)', fontSize: '0.82rem', maxWidth: '620px', textAlign: 'center', marginTop: '-6px' }}>{error}</div>}
           </div>
         ) : (
           <>
@@ -398,6 +506,31 @@ export default function AiChat({ currentUser, sidebarOpen }: AiChatProps) {
             >
               {error && <div style={{ color: 'var(--color-danger)', fontSize: '0.82rem', maxWidth: '720px', textAlign: 'center' }}>{error}</div>}
               {inputBox(false)}
+              <button
+                type="button"
+                onClick={() => send(input)}
+                disabled={!input.trim() || sending}
+                style={{
+                  background: input.trim() && !sending ? '#000000' : '#e9ecef',
+                  color: input.trim() && !sending ? '#ffffff' : '#8a8d91',
+                  border: 'none',
+                  borderRadius: '16px',
+                  padding: '8px 20px',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  cursor: input.trim() && !sending ? 'pointer' : 'default',
+                  transition: 'opacity 0.2s',
+                  boxShadow: input.trim() && !sending ? '0 4px 12px rgba(0, 0, 0, 0.08)' : 'none'
+                }}
+                onMouseOver={(e) => {
+                  if (input.trim() && !sending) e.currentTarget.style.opacity = '0.85';
+                }}
+                onMouseOut={(e) => {
+                  if (input.trim() && !sending) e.currentTarget.style.opacity = '1';
+                }}
+              >
+                Send message
+              </button>
             </div>
           </>
         )}
