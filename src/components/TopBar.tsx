@@ -58,7 +58,7 @@ export default function TopBar({
           onClick={() => setActiveTab('rank')}
           style={{ background: 'none', border: 'none', fontWeight: 600, fontFamily: 'var(--font-sans)', fontSize: '0.95rem' }}
         >
-          Engineering Rank
+          Rank
         </button>
         <button
           type="button"

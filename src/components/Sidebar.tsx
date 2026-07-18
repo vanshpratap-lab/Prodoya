@@ -1,7 +1,14 @@
-import { CheckCircle2, Star } from 'lucide-react';
+import { Activity, Bot, CheckCircle2, Rocket, Trophy, Users, Zap } from 'lucide-react';
 import Avatar from './Avatar';
 import type { Profile } from '../lib/supabase';
-import { useEngineeringActivity } from '../lib/hooks';
+import { useEngineeringActivity, useActivityCalendar } from '../lib/hooks';
+
+const LEVEL_STEP = 100; // reputation points per level
+
+/** Local YYYY-MM-DD key matching get_activity_calendar's date format. */
+function dateKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 interface SidebarProps {
   profileStats: {
@@ -21,6 +28,40 @@ export default function Sidebar({
   setActiveTab,
 }: SidebarProps) {
   const { activity } = useEngineeringActivity(profile.id);
+  const { days: calendar } = useActivityCalendar(profile.id);
+
+  // 12-week mini heatmap, columns aligned to weeks (Sunday-start, like GitHub).
+  const today = new Date();
+  const rawStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 83);
+  const start = new Date(rawStart.getFullYear(), rawStart.getMonth(), rawStart.getDate() - rawStart.getDay());
+  const totalDays = Math.round((today.getTime() - start.getTime()) / 86400000) + 1;
+  const weekCount = Math.ceil(totalDays / 7);
+  const heatWeeks: Array<Array<number | null>> = [];
+  for (let w = 0; w < weekCount; w++) {
+    const col: Array<number | null> = [];
+    for (let d = 0; d < 7; d++) {
+      const cell = new Date(start.getFullYear(), start.getMonth(), start.getDate() + w * 7 + d);
+      col.push(cell > today ? null : (calendar.get(dateKey(cell)) ?? 0));
+    }
+    heatWeeks.push(col);
+  }
+  const heatColor = (count: number | null): string => {
+    if (count === null) return 'transparent';
+    if (count === 0) return 'var(--color-surface-elevated)';
+    if (count === 1) return 'rgba(124, 58, 237, 0.35)';
+    if (count === 2) return 'rgba(124, 58, 237, 0.6)';
+    return 'var(--color-primary)';
+  };
+
+  const level = Math.floor(profileStats.points / LEVEL_STEP) + 1;
+  const levelProgress = (profileStats.points % LEVEL_STEP) / LEVEL_STEP;
+
+  const quickStats = [
+    { label: 'Projects', value: activity.projects_built, icon: Rocket, color: '#059669' },
+    { label: 'Community', value: activity.community_contributions, icon: Users, color: '#dc2626' },
+    { label: 'AI impact', value: activity.ai_impact_score, icon: Bot, color: '#0891b2' },
+    { label: 'Active days', value: activity.active_days, icon: Activity, color: '#2563eb' },
+  ];
 
   return (
     <aside className={`sidebar-container ${sidebarOpen ? '' : 'collapsed'}`} style={{
@@ -113,13 +154,13 @@ export default function Sidebar({
             paddingTop: '12px',
             marginTop: '4px'
           }}>
-            {/* Column 1: Rating */}
+            {/* Column 1: Global rank (real) */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                <Star size={11} style={{ fill: '#e9c46a', stroke: '#e9c46a' }} />
-                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--color-text-strong)' }}>4.9</span>
+                <Trophy size={11} style={{ color: '#e9c46a' }} />
+                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--color-text-strong)' }}>#{profileStats.rank}</span>
               </div>
-              <span style={{ fontSize: '0.62rem', color: 'var(--color-text-muted-light)', textTransform: 'lowercase', marginTop: '2px' }}>rating</span>
+              <span style={{ fontSize: '0.62rem', color: 'var(--color-text-muted-light)', textTransform: 'lowercase', marginTop: '2px' }}>rank</span>
             </div>
 
             <div style={{ width: '1px', height: '18px', background: 'var(--color-dark-border)' }} />
@@ -134,12 +175,12 @@ export default function Sidebar({
 
             <div style={{ width: '1px', height: '18px', background: 'var(--color-dark-border)' }} />
 
-            {/* Column 3: Rate / Points */}
+            {/* Column 3: Connections (real) */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
               <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--color-text-strong)' }}>
-                {Math.round(profileStats.points / 10)}
+                {profileStats.connections}
               </span>
-              <span style={{ fontSize: '0.62rem', color: 'var(--color-text-muted-light)', textTransform: 'lowercase', marginTop: '2px' }}>following</span>
+              <span style={{ fontSize: '0.62rem', color: 'var(--color-text-muted-light)', textTransform: 'lowercase', marginTop: '2px' }}>peers</span>
             </div>
           </div>
 
@@ -165,6 +206,108 @@ export default function Sidebar({
           >
             View profile
           </button>
+        </div>
+      </div>
+
+      {/* ── Engineering Activity panel — GitHub-contribution-panel feel, all real data ── */}
+      <div
+        className="anim-rise"
+        style={{
+          background: 'var(--color-surface)',
+          border: '1px solid var(--color-dark-border)',
+          borderRadius: '24px',
+          padding: '16px',
+          boxShadow: '0 10px 30px -5px rgba(0, 0, 0, 0.04), 0 8px 20px -6px rgba(0, 0, 0, 0.03), 0 0 0 1px rgba(0, 0, 0, 0.02)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '14px',
+        }}
+      >
+        <span
+          style={{
+            fontSize: '0.68rem',
+            fontWeight: 800,
+            color: 'var(--color-text-muted-light)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.8px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+          }}
+        >
+          <Zap size={12} style={{ color: 'var(--color-primary)' }} />
+          Engineering Activity
+        </span>
+
+        {/* Mini contribution heatmap — last 12 weeks */}
+        <div style={{ display: 'flex', gap: '3px', justifyContent: 'space-between' }}>
+          {heatWeeks.map((week, w) => (
+            <div key={w} style={{ display: 'flex', flexDirection: 'column', gap: '3px', flex: 1 }}>
+              {week.map((count, d) => (
+                <div
+                  key={d}
+                  title={count === null ? '' : `${count} contribution${count === 1 ? '' : 's'}`}
+                  style={{
+                    width: '100%',
+                    aspectRatio: '1',
+                    borderRadius: '2.5px',
+                    background: heatColor(count),
+                  }}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+
+        {/* Level + progress to next level (derived from real reputation points) */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text-strong)' }}>Level {level}</span>
+            <span style={{ fontSize: '0.66rem', fontWeight: 600, color: 'var(--color-text-muted-light)', fontVariantNumeric: 'tabular-nums' }}>
+              {profileStats.points % LEVEL_STEP} / {LEVEL_STEP} pts
+            </span>
+          </div>
+          <div style={{ height: '6px', borderRadius: '999px', background: 'var(--color-surface-elevated)', overflow: 'hidden' }}>
+            <div
+              className="anim-grow-x"
+              style={{
+                height: '100%',
+                width: `${Math.max(levelProgress * 100, 3)}%`,
+                borderRadius: '999px',
+                background: 'linear-gradient(90deg, var(--color-primary), #2563eb)',
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Quick stats 2×2 */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+          {quickStats.map(stat => {
+            const Icon = stat.icon;
+            return (
+              <div
+                key={stat.label}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 10px',
+                  borderRadius: '12px',
+                  background: 'var(--color-surface-elevated)',
+                }}
+              >
+                <Icon size={13} style={{ color: stat.color, flexShrink: 0 }} />
+                <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text-strong)', lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' }}>
+                    {stat.value}
+                  </span>
+                  <span style={{ fontSize: '0.6rem', fontWeight: 600, color: 'var(--color-text-muted-light)', whiteSpace: 'nowrap' }}>
+                    {stat.label}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </aside>

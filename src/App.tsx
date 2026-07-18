@@ -33,8 +33,16 @@ export default function App() {
   const { feedItems, createPost, toggleLike, toggleRepost, incrementCommentCount, deletePost, blockUser } = usePosts(userId);
   const { connections, toggleConnect, connectionCount } = useConnections(userId);
   const { chats, sendMessage, startDirectChat } = useCommunityChat(userId);
-  const { notifications, addNotification } = useNotifications(userId);
-  const { rows: leaderboardRows, refetch: refetchLeaderboard } = useLeaderboard();
+  const {
+    notifications,
+    loading: notificationsLoading,
+    unreadCount,
+    addNotification,
+    markRead,
+    markAllRead,
+    deleteNotification,
+  } = useNotifications(userId);
+  const { rows: leaderboardRows, loading: leaderboardLoading, refetch: refetchLeaderboard } = useLeaderboard();
 
   if (authLoading) {
     return (
@@ -102,7 +110,8 @@ export default function App() {
       await Promise.all([refreshProfile(), refetchLeaderboard()]);
       await addNotification(
         '🤖',
-        `AI analyzed your new post and categorized it as ${difficulty.toUpperCase()} (+${points} points).`,
+        `Your post was categorized as ${difficulty.toUpperCase()} (+${points} points).`,
+        'ai',
       );
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to create post. Please try again.');
@@ -139,23 +148,12 @@ export default function App() {
     setTypeMessage('');
   };
 
-  const ranks = leaderboardRows.map((p, idx) => ({
-    id: p.id,
-    rank: idx + 1,
-    name: p.full_name,
-    score: `${Math.round(p.rank_score).toLocaleString()} pts`,
-    activeDays: p.active_days,
-    change: idx % 2 === 0 ? 'up' : 'down',
-    role: p.college ? `${p.role} — ${p.college}` : p.role,
-    avatar: p.avatar_url,
-  }));
-
-  const myRankIndex = ranks.findIndex(r => r.id === user.id);
+  const myRankIndex = leaderboardRows.findIndex(r => r.id === user.id);
 
   const profileStats = {
     connections: connectionCount,
     rating: 4.9,
-    rank: myRankIndex >= 0 ? myRankIndex + 1 : ranks.length || 1,
+    rank: myRankIndex >= 0 ? myRankIndex + 1 : leaderboardRows.length || 1,
     points: profile.points,
   };
 
@@ -168,7 +166,7 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         setSidebarOpen={setSidebarOpen}
-        notificationsCount={notifications.length}
+        notificationsCount={unreadCount}
         profile={profile}
         onSignOut={signOut}
       />
@@ -204,7 +202,13 @@ export default function App() {
           </main>
         ) : activeTab === 'notifications' ? (
           <main className="content-area">
-            <Notifications notifications={notifications} />
+            <Notifications
+              notifications={notifications}
+              loading={notificationsLoading}
+              markRead={markRead}
+              markAllRead={markAllRead}
+              deleteNotification={deleteNotification}
+            />
           </main>
         ) : (
           /* Content View Switcher */
@@ -231,7 +235,7 @@ export default function App() {
               <Peers connections={connections} handleToggleConnect={handleToggleConnect} searchQuery={searchQuery} currentUser={profile} />
             )}
 
-            {activeTab === 'rank' && <Rankings ranks={ranks} currentUserId={user.id} />}
+            {activeTab === 'rank' && <Rankings rows={leaderboardRows} loading={leaderboardLoading} currentUser={profile} />}
 
             {activeTab === 'messages' && (
               <Chat

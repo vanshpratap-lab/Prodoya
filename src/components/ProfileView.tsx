@@ -100,7 +100,8 @@ export default function ProfileView({
     for (let w = 0; w < 53; w++) {
       const week: number[] = [];
       for (let d = 0; d < 7; d++) {
-        const key = cursor.toISOString().slice(0, 10);
+        // Local date key — toISOString() is UTC and shifts the whole grid a day for IST users.
+        const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
         const count = activityDays.get(key) ?? 0;
         const level = count === 0 ? 0 : count === 1 ? 1 : count === 2 ? 2 : count <= 4 ? 3 : 4;
         week.push(level);
@@ -113,6 +114,44 @@ export default function ProfileView({
 
   const contributionGrid = buildContributionGrid();
   const totalContributions = [...activityDays.values()].reduce((sum, n) => sum + n, 0);
+
+  // Contribution statistics, all computed from the real calendar data.
+  const contributionStats = (() => {
+    let bestDay = { date: '', count: 0 };
+    const monthTotals = new Map<string, number>();
+    activityDays.forEach((count, date) => {
+      if (count > bestDay.count) bestDay = { date, count };
+      const month = date.slice(0, 7);
+      monthTotals.set(month, (monthTotals.get(month) ?? 0) + count);
+    });
+    let bestMonth = { month: '', count: 0 };
+    monthTotals.forEach((count, month) => {
+      if (count > bestMonth.count) bestMonth = { month, count };
+    });
+
+    // Longest chain of consecutive active days.
+    const activeDates = [...activityDays.entries()]
+      .filter(([, c]) => c > 0)
+      .map(([d]) => d)
+      .sort();
+    let longestChain = 0;
+    let run = 0;
+    let prev: Date | null = null;
+    activeDates.forEach(dateStr => {
+      const d = new Date(dateStr + 'T00:00:00');
+      run = prev && d.getTime() - prev.getTime() === 86400000 ? run + 1 : 1;
+      longestChain = Math.max(longestChain, run);
+      prev = d;
+    });
+
+    const fmtDay = bestDay.date
+      ? new Date(bestDay.date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+      : '—';
+    const fmtMonth = bestMonth.month
+      ? new Date(bestMonth.month + '-01T00:00:00').toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+      : '—';
+    return { bestDay, bestMonth, longestChain, fmtDay, fmtMonth };
+  })();
 
   const getCellColor = (level: number) => {
     switch (level) {
@@ -371,6 +410,39 @@ export default function ProfileView({
         <h3 style={{ fontSize: '1.05rem', color: 'var(--color-text-strong)', margin: 0, fontWeight: 600 }}>
           {totalContributions} contribution{totalContributions === 1 ? '' : 's'} in the last year
         </h3>
+
+        {/* Contribution statistics — real values from the calendar */}
+        {totalContributions > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
+            {[
+              { label: 'Best day', value: `${contributionStats.bestDay.count}`, sub: contributionStats.fmtDay },
+              { label: 'Best month', value: `${contributionStats.bestMonth.count}`, sub: contributionStats.fmtMonth },
+              { label: 'Longest chain', value: `${contributionStats.longestChain}`, sub: `day${contributionStats.longestChain === 1 ? '' : 's'} in a row` },
+              { label: 'Daily average', value: (totalContributions / 365).toFixed(2), sub: 'per day this year' },
+            ].map(stat => (
+              <div
+                key={stat.label}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '2px',
+                  padding: '10px 14px',
+                  borderRadius: '14px',
+                  background: 'var(--color-surface-elevated)',
+                  border: '1px solid var(--color-dark-border)',
+                }}
+              >
+                <span style={{ fontSize: '0.66rem', fontWeight: 800, color: 'var(--color-text-muted-light)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+                  {stat.label}
+                </span>
+                <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text-strong)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
+                  {stat.value}
+                </span>
+                <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--color-text-muted-light)' }}>{stat.sub}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="contribution-scroll" style={{ overflowX: 'auto', paddingBottom: '4px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '780px' }}>

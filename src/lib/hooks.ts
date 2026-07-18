@@ -698,42 +698,61 @@ export function useCommunityChat(currentUserId: string | undefined) {
 
 // ─── Notifications ──────────────────────────────────────────────────────────
 
+export type NotificationCategory = 'community' | 'network' | 'message' | 'ai' | 'system';
+
 export interface NotificationView {
   id: number;
   icon: string;
   text: string;
   time: string;
+  createdAt: string;
+  category: NotificationCategory;
+  read: boolean;
+  actor: { name: string; avatar: string } | null;
+}
+
+const KNOWN_CATEGORIES: NotificationCategory[] = ['community', 'network', 'message', 'ai', 'system'];
+
+function mapNotificationRow(n: any): NotificationView {
+  return {
+    id: n.id,
+    icon: n.icon,
+    text: n.text,
+    time: formatRelativeTime(n.created_at),
+    createdAt: n.created_at,
+    category: KNOWN_CATEGORIES.includes(n.category) ? n.category : 'system',
+    read: !!n.read_at,
+    actor: n.actor ? { name: n.actor.full_name, avatar: n.actor.avatar_url } : null,
+  };
 }
 
 export function useNotifications(currentUserId: string | undefined) {
   const [notifications, setNotifications] = useState<NotificationView[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const fetchNotifications = useCallback(async () => {
     if (!currentUserId) {
       setNotifications([]);
+      setLoading(false);
       return;
     }
     const { data } = await supabase
       .from('notifications')
-      .select('*')
+      .select('*, actor:profiles!notifications_actor_id_fkey(full_name, avatar_url)')
       .eq('user_id', currentUserId)
       .order('created_at', { ascending: false })
-      .limit(50);
-    setNotifications(
-      (data || []).map((n: any) => ({
-        id: n.id,
-        icon: n.icon,
-        text: n.text,
-        time: formatRelativeTime(n.created_at),
-      })),
-    );
+      .limit(100);
+    setNotifications((data || []).map(mapNotificationRow));
+    setLoading(false);
   }, [currentUserId]);
 
   useEffect(() => {
     fetchNotifications();
   }, [fetchNotifications]);
 
-  // Live-push new notifications (e.g. connection requests) and chime for the recipient only.
+  // Live-push new notifications (likes, comments, connections, DMs) and chime
+  // for the recipient only. The realtime payload has no joined actor row, so
+  // refetch to pick up the actor's name/avatar.
   useEffect(() => {
     if (!currentUserId) return;
     const channel = supabase
@@ -741,29 +760,55 @@ export function useNotifications(currentUserId: string | undefined) {
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${currentUserId}` },
-        (payload: any) => {
-          const n = payload.new;
-          setNotifications(prev =>
-            prev.some(existing => existing.id === n.id)
-              ? prev
-              : [{ id: n.id, icon: n.icon, text: n.text, time: formatRelativeTime(n.created_at) }, ...prev],
-          );
+        () => {
           playNotificationChime();
+          fetchNotifications();
         },
       )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUserId]);
+  }, [currentUserId, fetchNotifications]);
 
-  const addNotification = async (icon: string, text: string) => {
+  const addNotification = async (icon: string, text: string, category: NotificationCategory = 'system') => {
     if (!currentUserId) return;
-    await supabase.from('notifications').insert({ user_id: currentUserId, icon, text });
+    await supabase.from('notifications').insert({ user_id: currentUserId, icon, text, category });
     await fetchNotifications();
   };
 
-  return { notifications, addNotification, refetch: fetchNotifications };
+  const markRead = async (id: number) => {
+    setNotifications(prev => prev.map(n => (n.id === id ? { ...n, read: true } : n)));
+    await supabase.from('notifications').update({ read_at: new Date().toISOString() }).eq('id', id);
+  };
+
+  const markAllRead = async () => {
+    if (!currentUserId) return;
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    await supabase
+      .from('notifications')
+      .update({ read_at: new Date().toISOString() })
+      .eq('user_id', currentUserId)
+      .is('read_at', null);
+  };
+
+  const deleteNotification = async (id: number) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+    await supabase.from('notifications').delete().eq('id', id);
+  };
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  return {
+    notifications,
+    loading,
+    unreadCount,
+    addNotification,
+    markRead,
+    markAllRead,
+    deleteNotification,
+    refetch: fetchNotifications,
+  };
 }
 
 // ─── Leaderboard ─────────────────────────────────────────────────────────────

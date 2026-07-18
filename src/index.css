@@ -2066,3 +2066,118 @@ body {
   }
 }
 
+/* ── Motion system (Phase 2 polish) ─────────────────────────────────────────
+   Spring-feel entrance/growth animations shared across pages. Everything is
+   opt-in via class, and all of it is disabled under prefers-reduced-motion. */
+
+@keyframes animRise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.anim-rise {
+  animation: animRise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes animGrowX {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.anim-grow-x {
+  transform-origin: left center;
+  animation: animGrowX 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 0.15s;
+}
+
+@keyframes animGrowY {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+.anim-grow-y {
+  transform-origin: bottom center;
+  animation: animGrowY 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Skeleton shimmer for loading states */
+@keyframes skeletonShimmer {
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-elevated) 25%,
+    rgba(124, 58, 237, 0.07) 50%,
+    var(--color-surface-elevated) 75%
+  );
+  background-size: 800px 100%;
+  animation: skeletonShimmer 1.4s ease-in-out infinite;
+}
+
+/* Notification rows: management actions appear on hover / keyboard focus,
+   and stay visible on touch devices where hover doesn't exist. */
+.notif-row .notif-actions {
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.notif-row:hover .notif-actions,
+.notif-row:focus-within .notif-actions {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .notif-row .notif-actions {
+    opacity: 1;
+  }
+}
+
+.hover-lift {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-rise,
+  .anim-grow-x,
+  .anim-grow-y,
+  .skeleton-shimmer {
+    animation: none;
+  }
+
+  .anim-rise {
+    opacity: 1;
+    transform: none;
+  }
+
+  .anim-grow-x,
+  .anim-grow-y {
+    transform: none;
+  }
+}
+
