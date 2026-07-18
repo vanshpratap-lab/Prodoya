@@ -124,7 +124,7 @@ export function usePosts(currentUserId: string | undefined) {
       video_url: input.video_url || null,
     });
     if (error) throw error;
-    await supabase.rpc('award_post_points', { p_points: input.ai_points });
+    await supabase.rpc('award_post_points', { p_difficulty: input.ai_difficulty });
     await fetchPosts();
   };
 
