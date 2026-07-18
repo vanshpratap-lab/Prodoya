@@ -5,6 +5,7 @@ import type { Profile } from '../lib/supabase';
 import { uploadPostMedia, MAX_POST_IMAGES } from '../lib/hooks';
 import PostCard, { type FeedPost } from './PostCard';
 import EmojiPicker from './EmojiPicker';
+import VideoPlayer from './VideoPlayer';
 
 interface FeedProps {
   feedPosts: FeedPost[];
@@ -103,6 +104,10 @@ export default function Feed({
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
+    if (!file.type.startsWith('video/')) {
+      setUploadError('That file isn\'t a video. Please choose a video file.');
+      return;
+    }
     setUploadError(null);
     setUploading('video');
     setComposerExpanded(true);
@@ -110,7 +115,7 @@ export default function Feed({
       const url = await uploadPostMedia(currentUser.id, file);
       setVideoUrl(url);
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : 'Failed to upload video.');
+      setUploadError(err instanceof Error ? err.message : 'Failed to upload video. It may be too large — try a shorter clip or a smaller file size.');
     } finally {
       setUploading(null);
     }
@@ -288,19 +293,19 @@ export default function Feed({
                     <Loader2 size={16} className="animate-spin" />
                     Uploading video…
                   </div>
-                ) : (
+                ) : videoUrl ? (
                   <>
-                    <video src={videoUrl ?? undefined} controls style={{ width: '100%', maxHeight: '220px', display: 'block', background: '#000' }} />
+                    <VideoPlayer src={videoUrl} maxHeight={220} />
                     <button
                       type="button"
                       onClick={() => setVideoUrl(null)}
                       aria-label="Remove video"
-                      style={{ position: 'absolute', top: '8px', right: '8px', width: '26px', height: '26px', borderRadius: '50%', border: 'none', background: 'rgba(15, 23, 42, 0.65)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                      style={{ position: 'absolute', top: '8px', right: '8px', width: '26px', height: '26px', borderRadius: '50%', border: 'none', background: 'rgba(15, 23, 42, 0.65)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 1 }}
                     >
                       <X size={14} />
                     </button>
                   </>
-                )}
+                ) : null}
               </div>
             </div>
           )}

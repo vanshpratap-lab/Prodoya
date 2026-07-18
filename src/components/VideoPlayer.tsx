@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, AlertTriangle, Download } from 'lucide-react';
 
 interface VideoPlayerProps {
   src: string;
@@ -11,12 +11,13 @@ export default function VideoPlayer({ src, maxHeight = 320 }: VideoPlayerProps) 
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(true);
   const [ready, setReady] = useState(false);
+  const [errored, setErrored] = useState(false);
 
   const togglePlay = () => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || errored) return;
     if (video.paused) {
-      video.play();
+      video.play().catch(() => setErrored(true));
       setPlaying(true);
     } else {
       video.pause();
@@ -32,6 +33,31 @@ export default function VideoPlayer({ src, maxHeight = 320 }: VideoPlayerProps) 
     setMuted(video.muted);
   };
 
+  if (errored) {
+    return (
+      <div
+        style={{
+          width: '100%', minHeight: '140px', borderRadius: '12px', border: '1px solid var(--color-dark-border)',
+          background: 'var(--color-surface-elevated)', display: 'flex', flexDirection: 'column', alignItems: 'center',
+          justifyContent: 'center', gap: '10px', padding: '20px', textAlign: 'center',
+        }}
+      >
+        <AlertTriangle size={22} style={{ color: 'var(--color-warning)' }} />
+        <span style={{ fontSize: '0.82rem', color: 'var(--color-text-light)', maxWidth: '320px' }}>
+          This video can't be played directly in the browser — its format or codec isn't supported (common with videos recorded on some phones).
+        </span>
+        <a
+          href={src}
+          download
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none' }}
+        >
+          <Download size={14} />
+          Download the original file
+        </a>
+      </div>
+    );
+  }
+
   return (
     <div
       onClick={togglePlay}
@@ -46,7 +72,9 @@ export default function VideoPlayer({ src, maxHeight = 320 }: VideoPlayerProps) 
         src={src}
         muted={muted}
         playsInline
+        preload="metadata"
         onLoadedMetadata={() => setReady(true)}
+        onError={() => setErrored(true)}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onEnded={() => setPlaying(false)}
