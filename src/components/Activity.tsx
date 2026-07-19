@@ -35,7 +35,7 @@ export default function Activity({
 }: ActivityProps) {
   const [tab, setTab] = useState<ActivityTab>('posts');
 
-  const imagePosts = myPosts.filter(p => p.projectShowcase || p.videoUrl);
+  const imagePosts = myPosts.filter(p => (p.images && p.images.length > 0) || p.videoUrl);
   const visiblePosts = tab === 'images' ? imagePosts : myPosts;
   const previewPosts = variant === 'compact' ? visiblePosts.slice(0, 2) : visiblePosts;
 
@@ -104,7 +104,7 @@ export default function Activity({
         </div>
 
         {previewPosts.length === 0 ? emptyState : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {previewPosts.map(post => (
               <PostCard
                 key={post.feedKey}
@@ -114,6 +114,7 @@ export default function Activity({
                 onRepost={onRepost}
                 onCommentAdded={onCommentAdded}
                 onDelete={onDelete}
+                compact
               />
             ))}
           </div>

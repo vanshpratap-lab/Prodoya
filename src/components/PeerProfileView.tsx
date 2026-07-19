@@ -1,7 +1,10 @@
-import { useState } from 'react';
-import { ArrowLeft, Github, Award, ShieldCheck, Lock, Code, Cpu, Layers, UserPlus, UserCheck, GitPullRequest, Activity as ActivityIcon, GitBranch, BookOpen, GitFork, FlaskConical, Users, Star, Zap } from 'lucide-react';
+import { ArrowLeft, Github, Linkedin, Twitter, ShieldCheck, Briefcase, Star, UserPlus, UserCheck, Activity as ActivityIcon, GitBranch, BookOpen, GitFork, FlaskConical, Users, Zap, Loader2 } from 'lucide-react';
 import Avatar from './Avatar';
-import { useEngineeringActivity, useActivityCalendar } from '../lib/hooks';
+import type { Profile } from '../lib/supabase';
+import { useEngineeringActivity, useActivityCalendar, usePeerProfile, usePeerPosts } from '../lib/hooks';
+import Activity from './Activity';
+import type { FeedPost } from './PostCard';
+import { formatRelativeTime } from '../lib/time';
 
 interface Connection {
   id: string;
@@ -14,14 +17,42 @@ interface Connection {
 
 interface PeerProfileViewProps {
   peer: Connection;
+  currentUser: Profile;
   onBack: () => void;
   onToggleConnect: (id: string) => void;
 }
 
-export default function PeerProfileView({ peer, onBack, onToggleConnect }: PeerProfileViewProps) {
-  const [selectedYear, setSelectedYear] = useState<2026 | 2025>(2026);
+export default function PeerProfileView({ peer, currentUser, onBack, onToggleConnect }: PeerProfileViewProps) {
+  const { profile, connectionCount, loading: profileLoading } = usePeerProfile(peer.id);
   const { activity } = useEngineeringActivity(peer.id);
   const { days: activityDays } = useActivityCalendar(peer.id);
+  const { posts, toggleLike, toggleRepost, incrementCommentCount } = usePeerPosts(peer.id, currentUser.id);
+
+  const noop = () => {};
+
+  const myPosts: FeedPost[] = posts.map(p => ({
+    id: p.id,
+    feedKey: `post-${p.id}`,
+    authorId: p.author_id,
+    author: p.author?.full_name ?? peer.name,
+    avatar: p.author?.avatar_url ?? peer.avatar,
+    college: p.author?.college ?? peer.college,
+    role: p.author?.role ?? peer.role,
+    content: p.content,
+    tags: p.tags,
+    aiDifficulty: p.ai_difficulty,
+    aiPoints: p.ai_points,
+    likes: p.like_count,
+    hasLiked: p.has_liked,
+    reposts: p.repost_count,
+    hasReposted: p.has_reposted,
+    commentCount: p.comment_count,
+    time: formatRelativeTime(p.created_at),
+    githubUrl: p.github_url ?? undefined,
+    codeSnippet: p.code_snippet ?? undefined,
+    images: p.image_urls ?? [],
+    videoUrl: p.video_url ?? undefined,
+  }));
 
   // Real GitHub-style contribution grid built from this peer's actual post activity.
   const buildContributionGrid = () => {
@@ -36,7 +67,8 @@ export default function PeerProfileView({ peer, onBack, onToggleConnect }: PeerP
     for (let w = 0; w < 53; w++) {
       const week: number[] = [];
       for (let d = 0; d < 7; d++) {
-        const key = cursor.toISOString().slice(0, 10);
+        // Local date key — toISOString() is UTC and shifts the whole grid a day for IST users.
+        const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
         const count = activityDays.get(key) ?? 0;
         const level = count === 0 ? 0 : count === 1 ? 1 : count === 2 ? 2 : count <= 4 ? 3 : 4;
         week.push(level);
@@ -48,6 +80,44 @@ export default function PeerProfileView({ peer, onBack, onToggleConnect }: PeerP
   };
 
   const contributionGrid = buildContributionGrid();
+  const totalContributions = [...activityDays.values()].reduce((sum, n) => sum + n, 0);
+
+  // Contribution statistics, all computed from the real calendar data (same as own profile).
+  const contributionStats = (() => {
+    let bestDay = { date: '', count: 0 };
+    const monthTotals = new Map<string, number>();
+    activityDays.forEach((count, date) => {
+      if (count > bestDay.count) bestDay = { date, count };
+      const month = date.slice(0, 7);
+      monthTotals.set(month, (monthTotals.get(month) ?? 0) + count);
+    });
+    let bestMonth = { month: '', count: 0 };
+    monthTotals.forEach((count, month) => {
+      if (count > bestMonth.count) bestMonth = { month, count };
+    });
+
+    const activeDates = [...activityDays.entries()]
+      .filter(([, c]) => c > 0)
+      .map(([d]) => d)
+      .sort();
+    let longestChain = 0;
+    let run = 0;
+    let prev: Date | null = null;
+    activeDates.forEach(dateStr => {
+      const d = new Date(dateStr + 'T00:00:00');
+      run = prev && d.getTime() - prev.getTime() === 86400000 ? run + 1 : 1;
+      longestChain = Math.max(longestChain, run);
+      prev = d;
+    });
+
+    const fmtDay = bestDay.date
+      ? new Date(bestDay.date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+      : '—';
+    const fmtMonth = bestMonth.month
+      ? new Date(bestMonth.month + '-01T00:00:00').toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+      : '—';
+    return { bestDay, bestMonth, longestChain, fmtDay, fmtMonth };
+  })();
 
   const getCellColor = (level: number) => {
     switch (level) {
@@ -60,179 +130,169 @@ export default function PeerProfileView({ peer, onBack, onToggleConnect }: PeerP
     }
   };
 
-  // Get dynamic skills tailored to their roles
-  const getPeerSkills = () => {
-    const roleLower = peer.role.toLowerCase();
-    if (roleLower.includes('ai') || roleLower.includes('ml') || roleLower.includes('machine')) {
-      return [
-        { name: 'PyTorch & TensorFlow', val: '92%', num: 92, color: '#ec4899' },
-        { name: 'Data Pipeline Design', val: '85%', num: 85, color: 'var(--color-primary)' },
-        { name: 'Python Engineering', val: '95%', num: 95, color: '#10b981' },
-        { name: 'Statistical Modeling', val: '80%', num: 80, color: '#3b82f6' }
-      ];
-    }
-    if (roleLower.includes('mentor') || roleLower.includes('lead')) {
-      return [
-        { name: 'System Architecture', val: '96%', num: 96, color: 'var(--color-primary)' },
-        { name: 'Cloud Infrastructure', val: '90%', num: 90, color: '#3b82f6' },
-        { name: 'Engineering Leadership', val: '95%', num: 95, color: '#10b981' },
-        { name: 'Agile Mentorship', val: '98%', num: 98, color: '#ec4899' }
-      ];
-    }
-    if (roleLower.includes('design') || roleLower.includes('product') || roleLower.includes('hci')) {
-      return [
-        { name: 'UI/UX Design Systems', val: '95%', num: 95, color: '#3b82f6' },
-        { name: 'Product Prototyping', val: '88%', num: 88, color: '#ec4899' },
-        { name: 'HCI User Testing', val: '90%', num: 90, color: 'var(--color-primary)' },
-        { name: 'CSS & Typography', val: '92%', num: 92, color: '#10b981' }
-      ];
-    }
-    // Default fallback
-    return [
-      { name: 'Data Structures & Algos', val: '88%', num: 88, color: 'var(--color-primary)' },
-      { name: 'Full-Stack Development', val: '82%', num: 82, color: '#10b981' },
-      { name: 'Git Workflow & CI/CD', val: '85%', num: 85, color: '#3b82f6' },
-      { name: 'API Design Patterns', val: '78%', num: 78, color: '#ec4899' }
-    ];
-  };
-
-  // Get dynamic milestone details
-  const getPeerMilestones = () => {
-    const roleLower = peer.role.toLowerCase();
-    if (roleLower.includes('ai') || roleLower.includes('ml')) {
-      return [
-        { title: 'Trained ResNet on ImageNet Subsets', desc: 'Achieved 89% top-5 accuracy inside localized training cluster', time: 'Yesterday' },
-        { title: 'Synced PyTorch DataLoader Optimization', desc: 'Reduced queue latency by 45% using customized prefetching', time: '3 days ago' },
-        { title: 'Unlocked ML Explorer Badge', desc: 'Successfully synchronized 3 model files to public workspaces', time: '1 week ago' }
-      ];
-    }
-    if (roleLower.includes('mentor') || roleLower.includes('lead')) {
-      return [
-        { title: 'Conducted Architecture Office Hours', desc: 'Reviewed distributed caching protocols with 12 peer engineers', time: 'Today' },
-        { title: 'Merged AWS VPC Security Group Audits', desc: 'Secured offline microservice networks with zero service downtime', time: '2 days ago' },
-        { title: 'Unlocked Technical Mentor Badge', desc: 'Guided 5 engineering networks into verified code review states', time: '4 days ago' }
-      ];
-    }
-    return [
-      { title: 'Completed Daily Algorithm Challenge', desc: 'Solved Red-Black tree insertion balance updates in under 20 mins', time: 'Today' },
-      { title: 'Integrated WebSocket Chat Room syncs', desc: 'Refactored state triggers using transactional locks', time: 'Yesterday' },
-      { title: 'Unlocked Code Warrior Badge', desc: 'Earned 10+ positive review tags in collaborative workspaces', time: '5 days ago' }
-    ];
-  };
-
-  const skills = getPeerSkills();
-  const milestones = getPeerMilestones();
   const months = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'];
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '960px', margin: '0 auto', paddingBottom: '40px', animation: 'fadeIn 0.3s ease' }}>
-      
-      {/* Back button link */}
-      <div>
-        <button 
-          onClick={onBack}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--color-primary)',
-            fontSize: '0.9rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '4px 0',
-            transition: 'opacity 0.2s'
-          }}
-          className="hover:opacity-80"
-        >
-          <ArrowLeft size={16} />
-          Back to Connections
-        </button>
+  if (profileLoading || !profile) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '80px 0' }}>
+        <Loader2 size={26} className="animate-spin" style={{ color: 'var(--color-primary)' }} />
       </div>
+    );
+  }
 
-      {/* Header Profile Summary */}
-      <div 
-        className="profile-card-widget relative overflow-hidden"
-        style={{ 
-          background: 'linear-gradient(135deg, var(--color-surface), var(--color-surface-elevated))',
-          border: '1px solid var(--color-dark-border)',
-          borderRadius: '20px',
-          padding: '24px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '20px',
-          boxShadow: 'var(--shadow-md)'
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '820px', margin: '0 auto', paddingBottom: '40px', animation: 'fadeIn 0.3s ease' }}>
+
+      {/* Back button */}
+      <button
+        onClick={onBack}
+        style={{
+          background: 'none', border: 'none', color: 'var(--color-primary)', fontSize: '0.9rem', fontWeight: 600,
+          cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 0', alignSelf: 'flex-start',
         }}
       >
-        <div style={{ display: 'flex', gap: '18px', alignItems: 'center' }}>
-          <Avatar 
-            name={peer.name} 
-            avatarUrl={peer.avatar} 
-            size={84} 
-          />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', color: 'var(--color-text-strong)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {peer.name}
-              <ShieldCheck size={20} style={{ color: '#059669' }} />
-            </h2>
-            <p style={{ fontSize: '0.9rem', color: 'var(--color-text-strong)', fontWeight: 500 }}>
-              {peer.role} • {peer.college}
-            </p>
-            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted-light)' }}>
-              Verified Peer Network
-            </span>
-          </div>
-        </div>
+        <ArrowLeft size={16} />
+        Back to Connections
+      </button>
 
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-          <button 
-            type="button" 
-            onClick={() => onToggleConnect(peer.id)}
-            className={`network-connect-btn ${peer.connected ? 'connected' : ''}`}
-            style={{ 
-              padding: '8px 18px', 
-              borderRadius: '20px', 
-              fontSize: '0.85rem', 
-              fontWeight: 700, 
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              transition: 'all 0.25s ease'
-            }}
-          >
-            {peer.connected ? (
-              <>
-                <UserCheck size={15} />
-                Connected
-              </>
-            ) : (
-              <>
-                <UserPlus size={15} />
-                Connect
-              </>
+      {/* Header Profile Card — same design as your own profile */}
+      <div
+        style={{
+          backgroundColor: 'var(--color-surface)',
+          border: '1px solid var(--color-dark-border)',
+          borderRadius: '20px',
+          overflow: 'hidden',
+          boxShadow: 'var(--shadow-md)',
+        }}
+      >
+        <div style={{
+          height: '128px',
+          background: profile.cover_url
+            ? `url(${profile.cover_url}) center / cover no-repeat`
+            : 'linear-gradient(120deg, #7c3aed, #2563eb, #06b6d4)',
+        }} />
+
+        <div style={{ padding: '0 24px 24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '-40px', flexWrap: 'wrap', gap: '12px' }}>
+            <div style={{ borderRadius: '50%', border: '4px solid var(--color-surface)', background: 'var(--color-surface)' }}>
+              <Avatar name={profile.full_name} avatarUrl={profile.avatar_url} size={84} />
+            </div>
+
+            {profile.tech_stack && profile.tech_stack.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-muted-light)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <Star size={12} />
+                  Skills
+                </span>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  {profile.tech_stack.slice(0, 6).map((tech, idx) => (
+                    <span
+                      key={idx}
+                      style={{
+                        fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-primary)',
+                        backgroundColor: 'var(--color-primary-soft)', border: '1px solid rgba(124, 58, 237, 0.2)',
+                        padding: '4px 12px', borderRadius: '999px',
+                      }}
+                    >
+                      {tech.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
             )}
-          </button>
+          </div>
 
-          <a 
-            href="https://github.com" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="feed-action-btn github"
-            style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', padding: '7px 14px' }}
-          >
-            <Github size={15} />
-            GitHub
-          </a>
+          <div style={{ marginTop: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.7rem', color: 'var(--color-text-strong)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {profile.full_name}
+                <ShieldCheck size={18} style={{ color: '#2563eb' }} />
+              </h2>
+              <p style={{ fontSize: '0.9rem', color: 'var(--color-text-light)', fontWeight: 500, margin: 0 }}>
+                {profile.role}
+              </p>
+              {profile.college && (
+                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted-light)', margin: 0 }}>
+                  {profile.college}
+                </p>
+              )}
+              {profile.bio && (
+                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted-light)', marginTop: '4px' }}>
+                  {profile.bio}
+                </span>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px' }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-muted-light)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                <Briefcase size={12} />
+                Current role
+              </span>
+              <span style={{
+                fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-strong)',
+                backgroundColor: 'var(--color-surface-elevated)', border: '1px solid var(--color-dark-border)',
+                padding: '5px 14px', borderRadius: '999px',
+              }}>
+                {profile.role}
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '18px' }}>
+            <button
+              type="button"
+              onClick={() => onToggleConnect(peer.id)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700,
+                backgroundColor: peer.connected ? 'var(--color-surface-elevated)' : 'var(--color-text-strong)',
+                color: peer.connected ? 'var(--color-text-strong)' : 'var(--color-surface)',
+                border: peer.connected ? '1px solid var(--color-dark-border)' : 'none',
+                padding: '8px 16px', borderRadius: '999px', cursor: 'pointer',
+              }}
+            >
+              {peer.connected ? <UserCheck size={15} /> : <UserPlus size={15} />}
+              {peer.connected ? 'Connected' : 'Connect'}
+            </button>
+            {profile.github_url && (
+              <a
+                href={profile.github_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-light)', border: '1px solid var(--color-dark-border)', padding: '8px 16px', borderRadius: '999px' }}
+              >
+                <Github size={15} />
+                GitHub
+              </a>
+            )}
+            {profile.linkedin_url && (
+              <a
+                href={profile.linkedin_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700, backgroundColor: 'rgba(37, 99, 235, 0.10)', border: '1px solid rgba(37, 99, 235, 0.30)', color: '#1d4ed8', padding: '8px 16px', borderRadius: '999px' }}
+              >
+                <Linkedin size={15} />
+                LinkedIn
+              </a>
+            )}
+            {profile.twitter_url && (
+              <a
+                href={profile.twitter_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-light)', border: '1px solid var(--color-dark-border)', padding: '8px 16px', borderRadius: '999px' }}
+              >
+                <Twitter size={14} />
+                Twitter/X
+              </a>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* GitHub Contributions Grid */}
-      <div 
-        style={{ 
+      {/* Contribution calendar */}
+      <div
+        style={{
           backgroundColor: 'var(--color-surface)',
           border: '1px solid var(--color-dark-border)',
           borderRadius: '20px',
@@ -243,52 +303,45 @@ export default function PeerProfileView({ peer, onBack, onToggleConnect }: PeerP
           gap: '16px'
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-          <h3 style={{ fontSize: '1.1rem', color: 'var(--color-text-strong)', margin: 0, fontWeight: 600 }}>
-            Contributions in the last year
-          </h3>
-          
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: '2px', backgroundColor: '#e5e7eb', padding: '2px', borderRadius: '8px' }}>
-              <button 
-                type="button" 
-                onClick={() => setSelectedYear(2026)}
-                style={{ 
-                  background: selectedYear === 2026 ? 'var(--color-primary)' : 'none', 
-                  color: selectedYear === 2026 ? 'var(--color-on-primary)' : 'var(--color-text-muted-light)',
-                  border: 'none', 
-                  fontSize: '0.78rem', 
-                  fontWeight: 700, 
-                  padding: '4px 12px', 
-                  borderRadius: '6px', 
-                  cursor: 'pointer' 
-                }}
-              >
-                2026
-              </button>
-              <button 
-                type="button" 
-                onClick={() => setSelectedYear(2025)}
-                style={{ 
-                  background: selectedYear === 2025 ? 'var(--color-primary)' : 'none', 
-                  color: selectedYear === 2025 ? 'var(--color-on-primary)' : 'var(--color-text-muted-light)',
-                  border: 'none', 
-                  fontSize: '0.78rem', 
-                  fontWeight: 700, 
-                  padding: '4px 12px', 
-                  borderRadius: '6px', 
-                  cursor: 'pointer' 
-                }}
-              >
-                2025
-              </button>
-            </div>
-          </div>
-        </div>
+        <h3 style={{ fontSize: '1.05rem', color: 'var(--color-text-strong)', margin: 0, fontWeight: 600 }}>
+          {totalContributions} contribution{totalContributions === 1 ? '' : 's'} in the last year
+        </h3>
 
-        <div style={{ overflowX: 'auto', paddingBottom: '8px' }}>
+        {/* Contribution statistics — real values from the calendar */}
+        {totalContributions > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
+            {[
+              { label: 'Best day', value: `${contributionStats.bestDay.count}`, sub: contributionStats.fmtDay },
+              { label: 'Best month', value: `${contributionStats.bestMonth.count}`, sub: contributionStats.fmtMonth },
+              { label: 'Longest chain', value: `${contributionStats.longestChain}`, sub: `day${contributionStats.longestChain === 1 ? '' : 's'} in a row` },
+              { label: 'Daily average', value: (totalContributions / 365).toFixed(2), sub: 'per day this year' },
+            ].map(stat => (
+              <div
+                key={stat.label}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '2px',
+                  padding: '10px 14px',
+                  borderRadius: '14px',
+                  background: 'var(--color-surface-elevated)',
+                  border: '1px solid var(--color-dark-border)',
+                }}
+              >
+                <span style={{ fontSize: '0.66rem', fontWeight: 800, color: 'var(--color-text-muted-light)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+                  {stat.label}
+                </span>
+                <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text-strong)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
+                  {stat.value}
+                </span>
+                <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--color-text-muted-light)' }}>{stat.sub}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="contribution-scroll" style={{ overflowX: 'auto', paddingBottom: '4px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '780px' }}>
-            
             <div style={{ display: 'flex', paddingLeft: '32px', marginBottom: '4px' }}>
               {months.map((m, idx) => (
                 <div key={idx} style={{ flexGrow: 1, fontSize: '0.7rem', color: 'var(--color-text-muted-light)' }}>
@@ -308,12 +361,12 @@ export default function PeerProfileView({ peer, onBack, onToggleConnect }: PeerP
                 {contributionGrid.map((week, wIdx) => (
                   <div key={wIdx} style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                     {week.map((level, dIdx) => (
-                      <div 
+                      <div
                         key={dIdx}
-                        style={{ 
-                          width: '10px', 
-                          height: '10px', 
-                          backgroundColor: getCellColor(level), 
+                        style={{
+                          width: '10px',
+                          height: '10px',
+                          backgroundColor: getCellColor(level),
                           borderRadius: '2px',
                           transition: 'background-color 0.2s ease'
                         }}
@@ -325,8 +378,7 @@ export default function PeerProfileView({ peer, onBack, onToggleConnect }: PeerP
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', paddingLeft: '32px', fontSize: '0.72rem', color: 'var(--color-text-muted-light)', marginTop: '8px' }}>
-              <a href="#" style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>Learn how we count contributions</a>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', paddingLeft: '32px', fontSize: '0.72rem', color: 'var(--color-text-muted-light)', marginTop: '4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <span>Less</span>
                 <div style={{ width: '10px', height: '10px', backgroundColor: '#ebedf0', borderRadius: '2px' }} />
@@ -337,183 +389,13 @@ export default function PeerProfileView({ peer, onBack, onToggleConnect }: PeerP
                 <span>More</span>
               </div>
             </div>
-
           </div>
         </div>
-
       </div>
 
-      {/* Developer Stats & Progression Dashboard */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
-        
-        {/* Engineering Activity Panel — real, GitHub-contribution-style metrics */}
-        <div
-          style={{
-            backgroundColor: 'var(--color-surface)',
-            border: '1px solid var(--color-dark-border)',
-            borderRadius: '20px',
-            padding: '24px',
-            boxShadow: 'var(--shadow-md)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '20px'
-          }}
-        >
-          <h3 style={{ fontSize: '1.1rem', color: 'var(--color-text-strong)', margin: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <ActivityIcon className="text-amber-400" size={20} />
-            Engineering Activity
-          </h3>
-
-          <hr style={{ border: 'none', borderTop: '1px solid var(--color-dark-border)' }} />
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
-            {[
-              { icon: ActivityIcon, label: 'Active Days', value: activity.active_days, color: '#f97316' },
-              { icon: GitBranch, label: 'Projects Built', value: activity.projects_built, color: 'var(--color-primary)' },
-              { icon: BookOpen, label: 'Learning Sessions', value: activity.learning_sessions, color: '#3b82f6' },
-              { icon: GitFork, label: 'Open Source', value: activity.open_source_contributions, color: '#10b981' },
-              { icon: FlaskConical, label: 'Research Activity', value: activity.research_activity, color: '#ec4899' },
-              { icon: Users, label: 'Community', value: activity.community_contributions, color: '#8b5cf6' },
-              { icon: Star, label: 'Reputation', value: activity.reputation_score, color: '#eab308' },
-              { icon: Zap, label: 'AI Impact', value: activity.ai_impact_score, color: '#06b6d4' },
-            ].map(stat => (
-              <div key={stat.label} style={{ padding: '12px', backgroundColor: 'var(--color-surface-elevated)', borderRadius: '12px', border: '1px solid var(--color-dark-border)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <stat.icon size={16} style={{ color: stat.color }} />
-                <span style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--color-text-strong)' }}>{stat.value.toLocaleString()}</span>
-                <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted-light)', fontWeight: 600 }}>{stat.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Skill Mastery Levels */}
-        <div 
-          style={{ 
-            backgroundColor: 'var(--color-surface)',
-            border: '1px solid var(--color-dark-border)',
-            borderRadius: '20px',
-            padding: '24px',
-            boxShadow: 'var(--shadow-md)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '20px'
-          }}
-        >
-          <h3 style={{ fontSize: '1.1rem', color: 'var(--color-text-strong)', margin: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Cpu className="text-purple-400" size={20} />
-            Skill Mastery Metrics
-          </h3>
-          
-          <hr style={{ border: 'none', borderTop: '1px solid var(--color-dark-border)' }} />
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {skills.map((skill, index) => (
-              <div key={index} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--color-text-light)' }}>
-                  <span>{skill.name}</span>
-                  <span style={{ color: skill.color, fontWeight: 700 }}>{skill.val}</span>
-                </div>
-                <div style={{ height: '6px', backgroundColor: '#e5e7eb', borderRadius: '3px', overflow: 'hidden' }}>
-                  <div style={{ width: `${skill.num}%`, height: '100%', backgroundColor: skill.color }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-      </div>
-
-      {/* Tech Stack Interests & Milestones Timeline */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
-        
-        {/* Tech Stack Panel */}
-        <div 
-          style={{ 
-            backgroundColor: 'var(--color-surface)',
-            border: '1px solid var(--color-dark-border)',
-            borderRadius: '20px',
-            padding: '24px',
-            boxShadow: 'var(--shadow-md)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px'
-          }}
-        >
-          <h3 style={{ fontSize: '1.1rem', color: 'var(--color-text-strong)', margin: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Code className="text-purple-400" size={20} />
-            Stack & Tech Focus
-          </h3>
-
-          <hr style={{ border: 'none', borderTop: '1px solid var(--color-dark-border)' }} />
-
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {(peer.role.toLowerCase().includes('ai') ? ['Python', 'PyTorch', 'NumPy', 'TensorFlow', 'CUDA', 'Docker'] : ['React', 'TypeScript', 'Node.js', 'Next.js', 'Vite', 'Three.js']).map((tech, idx) => (
-              <span 
-                key={idx}
-                style={{ 
-                  fontSize: '0.8rem', 
-                  backgroundColor: 'var(--color-primary-soft)',
-                  border: '1px solid rgba(124, 58, 237, 0.25)',
-                  color: 'var(--color-primary)',
-                  padding: '6px 14px', 
-                  borderRadius: '20px', 
-                  fontWeight: 600
-                }}
-              >
-                {tech}
-              </span>
-            ))}
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px', fontSize: '0.82rem', color: 'var(--color-text-muted-light)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ width: '6px', height: '6px', backgroundColor: 'var(--color-primary)', borderRadius: '50%' }} />
-              Active in collaborative study groups.
-            </div>
-          </div>
-        </div>
-
-        {/* Milestone Timeline */}
-        <div 
-          style={{ 
-            backgroundColor: 'var(--color-surface)',
-            border: '1px solid var(--color-dark-border)',
-            borderRadius: '20px',
-            padding: '24px',
-            boxShadow: 'var(--shadow-md)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px'
-          }}
-        >
-          <h3 style={{ fontSize: '1.1rem', color: 'var(--color-text-strong)', margin: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Layers className="text-purple-400" size={20} />
-            Recent Milestones
-          </h3>
-
-          <hr style={{ border: 'none', borderTop: '1px solid var(--color-dark-border)' }} />
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', position: 'relative', paddingLeft: '20px' }}>
-            <div style={{ position: 'absolute', left: '7px', top: '4px', bottom: '4px', width: '2px', backgroundColor: '#e5e7eb' }} />
-
-            {milestones.map((milestone, idx) => (
-              <div key={idx} style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <div style={{ position: 'absolute', left: '-18px', top: '4px', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--color-primary)' }} />
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem' }}>
-                  <span style={{ fontWeight: 700, color: 'var(--color-text-strong)' }}>{milestone.title}</span>
-                  <span style={{ color: 'var(--color-text-muted-light)' }}>{milestone.time}</span>
-                </div>
-                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted-light)' }}>{milestone.desc}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-      </div>
-
-      {/* Achievements Section */}
-      <div 
-        style={{ 
+      {/* Engineering Activity — real, GitHub-contribution-style metrics */}
+      <div
+        style={{
           backgroundColor: 'var(--color-surface)',
           border: '1px solid var(--color-dark-border)',
           borderRadius: '20px',
@@ -524,105 +406,42 @@ export default function PeerProfileView({ peer, onBack, onToggleConnect }: PeerP
           gap: '16px'
         }}
       >
-        <h3 style={{ fontSize: '1.1rem', color: 'var(--color-text-strong)', margin: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Award className="text-amber-400" size={20} />
-          Achievements
+        <h3 style={{ fontSize: '1.05rem', color: 'var(--color-text-strong)', margin: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <ActivityIcon size={18} style={{ color: 'var(--color-primary)' }} />
+          Engineering Activity
         </h3>
 
-        <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', marginTop: '8px' }}>
-          
-          {/* Badge 1: Pull Shark (Earned / Active) */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-            <div 
-              style={{
-                width: '72px',
-                height: '72px',
-                borderRadius: '50%',
-                border: '2.5px solid var(--color-primary)',
-                overflow: 'hidden',
-                boxShadow: '0 0 15px rgba(124, 58, 237, 0.25)',
-                position: 'relative',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'linear-gradient(135deg, var(--color-primary-soft), var(--color-surface-elevated))',
-              }}
-            >
-              <GitPullRequest size={30} style={{ color: 'var(--color-primary)' }} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '10px' }}>
+          {[
+            { icon: ActivityIcon, label: 'Active Days', value: activity.active_days, color: '#f97316' },
+            { icon: GitBranch, label: 'Projects Built', value: activity.projects_built, color: 'var(--color-primary)' },
+            { icon: BookOpen, label: 'Learning Sessions', value: activity.learning_sessions, color: '#3b82f6' },
+            { icon: GitFork, label: 'Open Source', value: activity.open_source_contributions, color: '#10b981' },
+            { icon: FlaskConical, label: 'Research Activity', value: activity.research_activity, color: '#ec4899' },
+            { icon: Users, label: 'Community', value: activity.community_contributions, color: '#8b5cf6' },
+            { icon: Star, label: 'Reputation', value: activity.reputation_score, color: '#eab308' },
+            { icon: Zap, label: 'AI Impact', value: activity.ai_impact_score, color: '#06b6d4' },
+          ].map(stat => (
+            <div key={stat.label} style={{ padding: '12px', backgroundColor: 'var(--color-surface-elevated)', borderRadius: '12px', border: '1px solid var(--color-dark-border)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <stat.icon size={16} style={{ color: stat.color }} />
+              <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-text-strong)' }}>{stat.value.toLocaleString()}</span>
+              <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted-light)', fontWeight: 600 }}>{stat.label}</span>
             </div>
-            <span style={{ fontSize: '0.78rem', color: 'var(--color-text-strong)', fontWeight: 600 }}>Pull Shark</span>
-            <span style={{ fontSize: '0.65rem', color: 'var(--color-primary)', fontWeight: 600 }}>Active</span>
-          </div>
-
-          {/* Badge 2: YOLO (Locked) */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', opacity: 0.4 }}>
-            <div 
-              style={{ 
-                width: '72px', 
-                height: '72px', 
-                borderRadius: '50%', 
-                border: '2px dashed #d1d5db',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: '#f3f4f6'
-              }}
-            >
-              <Lock size={20} className="text-gray-400" />
-            </div>
-            <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted-light)', fontWeight: 600 }}>YOLO</span>
-            <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Locked</span>
-          </div>
-
-          {/* Badge 3: Quickdraw (Locked) */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', opacity: 0.4 }}>
-            <div 
-              style={{ 
-                width: '72px', 
-                height: '72px', 
-                borderRadius: '50%', 
-                border: '2px dashed #d1d5db',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: '#f3f4f6'
-              }}
-            >
-              <Lock size={20} className="text-gray-400" />
-            </div>
-            <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted-light)', fontWeight: 600 }}>Quickdraw</span>
-            <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Locked</span>
-          </div>
-
+          ))}
         </div>
       </div>
 
-      {/* Bottom Actions Area */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginTop: '12px' }}>
-        <button 
-          type="button"
-          onClick={onBack}
-          style={{
-            padding: '12px 32px',
-            borderRadius: '24px',
-            border: '1.5px solid var(--color-primary)',
-            backgroundColor: 'var(--color-primary-soft)',
-            color: 'var(--color-primary)',
-            fontSize: '0.9rem',
-            fontWeight: 700,
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}
-          className="hover:scale-105"
-        >
-          <ArrowLeft size={16} />
-          Explore More Peers
-        </button>
-      </div>
-
+      {/* Posts — this peer's real proof-of-work, compact cards */}
+      <Activity
+        variant="compact"
+        currentUser={currentUser}
+        myPosts={myPosts}
+        followerCount={connectionCount}
+        onLike={toggleLike}
+        onRepost={toggleRepost}
+        onCommentAdded={incrementCommentCount}
+        onDelete={noop}
+      />
     </div>
   );
 }

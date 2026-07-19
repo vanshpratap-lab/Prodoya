@@ -1,39 +1,62 @@
-import { useState, type FormEvent } from 'react';
+import { useState, Suspense, lazy, type FormEvent } from 'react';
 import { Loader2 } from 'lucide-react';
 import TopBar from './components/TopBar';
 import Sidebar from './components/Sidebar';
+import RightSidebar from './components/RightSidebar';
 import Feed from './components/Feed';
-import Peers from './components/Peers';
-import Rankings from './components/Rankings';
-import Chat from './components/Chat';
-import Notifications from './components/Notifications';
-import ProfileView from './components/ProfileView';
-import Activity from './components/Activity';
-import AiChat from './components/AiChat';
 import Auth from './components/Auth';
+
+// Every non-default tab is code-split so the first paint ships only the feed.
+const Peers = lazy(() => import('./components/Peers'));
+const Rankings = lazy(() => import('./components/Rankings'));
+const Chat = lazy(() => import('./components/Chat'));
+const Notifications = lazy(() => import('./components/Notifications'));
+const ProfileView = lazy(() => import('./components/ProfileView'));
+const Activity = lazy(() => import('./components/Activity'));
+const AiChat = lazy(() => import('./components/AiChat'));
 import { useAuth } from './lib/AuthContext';
-import { usePosts, useConnections, useCommunityChat, useNotifications, useLeaderboard } from './lib/hooks';
+import { usePosts, useConnections, useCommunityChat, useNotifications, useLeaderboard, submitContentReport } from './lib/hooks';
 import { formatRelativeTime } from './lib/time';
 import { playNotificationChime } from './lib/sound';
+import type { Profile } from './lib/supabase';
 
 const POINTS_MAP = { beginner: 10, intermediate: 20, advanced: 35 } as const;
+
+// A person opened from global search — shaped like a Connection for PeerProfileView.
+export interface PeerTarget {
+  id: string;
+  name: string;
+  role: string;
+  college: string;
+  avatar: string;
+  connected: boolean;
+}
 
 export default function App() {
   const { session, user, profile, loading: authLoading, refreshProfile, signOut } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'home' | 'network' | 'rank' | 'messages' | 'profile' | 'activity' | 'notifications' | 'ai'>('home');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [feedFilter, setFeedFilter] = useState<'all' | 'aiml' | 'webdev' | 'opensource' | 'hackathons'>('all');
+  const [feedFilter] = useState<'all' | 'aiml' | 'webdev' | 'opensource' | 'hackathons'>('all');
   const [selectedChatId, setSelectedChatId] = useState<number>(1);
   const [typeMessage, setTypeMessage] = useState('');
+  const [pendingPeer, setPendingPeer] = useState<PeerTarget | null>(null);
 
   const userId = user?.id;
-  const { feedItems, createPost, toggleLike, toggleRepost, incrementCommentCount, deletePost, blockUser } = usePosts(userId);
+  const { feedItems, createPost, toggleLike, toggleRepost, toggleSave, incrementCommentCount, deletePost, blockUser } = usePosts(userId);
   const { connections, toggleConnect, connectionCount } = useConnections(userId);
-  const { chats, sendMessage } = useCommunityChat(userId);
-  const { notifications, addNotification } = useNotifications(userId);
-  const { rows: leaderboardRows, refetch: refetchLeaderboard } = useLeaderboard();
+  const { chats, sendMessage, startDirectChat } = useCommunityChat(userId);
+  const {
+    notifications,
+    loading: notificationsLoading,
+    unreadCount,
+    addNotification,
+    markRead,
+    markAllRead,
+    deleteNotification,
+  } = useNotifications(userId);
+  const { rows: leaderboardRows, loading: leaderboardLoading, refetch: refetchLeaderboard } = useLeaderboard();
 
   if (authLoading) {
     return (
@@ -78,15 +101,16 @@ export default function App() {
     time: formatRelativeTime(p.activity_at),
     githubUrl: p.github_url ?? undefined,
     codeSnippet: p.code_snippet ?? undefined,
-    projectShowcase: p.project_showcase_url ?? undefined,
+    images: p.image_urls ?? [],
     videoUrl: p.video_url ?? undefined,
+    hasSaved: p.has_saved,
   }));
 
   const handleCreatePost = async (
     text: string,
     difficulty: 'beginner' | 'intermediate' | 'advanced',
     category: string,
-    extraData?: { imageUrl?: string; videoUrl?: string },
+    extraData?: { imageUrls?: string[]; videoUrl?: string },
   ) => {
     const points = POINTS_MAP[difficulty];
     try {
@@ -95,13 +119,14 @@ export default function App() {
         ai_difficulty: difficulty,
         ai_points: points,
         tags: [`#${category}`, '#proofOfWork', '#buildInPublic'],
-        project_showcase_url: extraData?.imageUrl,
+        image_urls: extraData?.imageUrls,
         video_url: extraData?.videoUrl,
       });
       await Promise.all([refreshProfile(), refetchLeaderboard()]);
       await addNotification(
         '🤖',
-        `AI analyzed your new post and categorized it as ${difficulty.toUpperCase()} (+${points} points).`,
+        `Your post was categorized as ${difficulty.toUpperCase()} (+${points} points).`,
+        'ai',
       );
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to create post. Please try again.');
@@ -124,6 +149,22 @@ export default function App() {
   // The signed-in user's own authored posts (original entries only, newest first).
   const myPosts = feedPosts.filter(p => p.authorId === user.id && !p.repostedBy);
 
+  const handleOpenProfile = (target: Profile) => {
+    if (target.id === user.id) {
+      setActiveTab('profile');
+      return;
+    }
+    setPendingPeer({
+      id: target.id,
+      name: target.full_name,
+      role: target.role,
+      college: target.college ?? '',
+      avatar: target.avatar_url ?? '',
+      connected: connections.find(c => c.id === target.id)?.connected ?? false,
+    });
+    setActiveTab('network');
+  };
+
   const handleToggleConnect = (id: string) => {
     // Chime for the initiating user only when a new connection request goes out (not on disconnect).
     const alreadyConnected = connections.find(c => c.id === id)?.connected;
@@ -138,46 +179,48 @@ export default function App() {
     setTypeMessage('');
   };
 
-  const ranks = leaderboardRows.map((p, idx) => ({
-    id: p.id,
-    rank: idx + 1,
-    name: p.full_name,
-    score: `${Math.round(p.rank_score).toLocaleString()} pts`,
-    activeDays: p.active_days,
-    change: idx % 2 === 0 ? 'up' : 'down',
-    role: p.college ? `${p.role} — ${p.college}` : p.role,
-    avatar: p.avatar_url,
-  }));
-
-  const myRankIndex = ranks.findIndex(r => r.id === user.id);
+  const myRankIndex = leaderboardRows.findIndex(r => r.id === user.id);
 
   const profileStats = {
     connections: connectionCount,
     rating: 4.9,
-    rank: myRankIndex >= 0 ? myRankIndex + 1 : ranks.length || 1,
+    rank: myRankIndex >= 0 ? myRankIndex + 1 : leaderboardRows.length || 1,
     points: profile.points,
   };
 
+  const showRightSidebar = activeTab === 'home';
+
   return (
     <div className="app-container">
-      {/* Top Navigation Bar */}
+      {/* Top Navigation Bar — always visible */}
       <TopBar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
         setSidebarOpen={setSidebarOpen}
-        notificationsCount={notifications.length}
+        notificationsCount={unreadCount}
         profile={profile}
         onSignOut={signOut}
+        onOpenProfile={handleOpenProfile}
       />
 
       {/* Main Container Wrapper */}
-      <div className="main-wrapper">
+      <div className="main-wrapper" style={{ height: 'calc(100vh - 72px)' }}>
         {activeTab !== 'ai' && (
-          <Sidebar profileStats={profileStats} sidebarOpen={sidebarOpen} profile={profile} />
+          <Sidebar 
+            profileStats={profileStats} 
+            sidebarOpen={sidebarOpen} 
+            profile={profile} 
+            setActiveTab={setActiveTab}
+          />
         )}
 
+        <Suspense
+          fallback={
+            <main className="content-area" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Loader2 size={26} className="animate-spin" style={{ color: 'var(--color-primary)' }} />
+            </main>
+          }
+        >
         {activeTab === 'ai' ? (
           <main className="content-area" style={{ padding: 0 }}>
             <AiChat currentUser={profile} sidebarOpen={sidebarOpen} />
@@ -198,7 +241,13 @@ export default function App() {
           </main>
         ) : activeTab === 'notifications' ? (
           <main className="content-area">
-            <Notifications notifications={notifications} />
+            <Notifications
+              notifications={notifications}
+              loading={notificationsLoading}
+              markRead={markRead}
+              markAllRead={markAllRead}
+              deleteNotification={deleteNotification}
+            />
           </main>
         ) : (
           /* Content View Switcher */
@@ -210,22 +259,31 @@ export default function App() {
                 feedPosts={feedPosts}
                 handleLikePost={handleLikePost}
                 handleRepostPost={handleRepostPost}
+                handleSavePost={toggleSave}
                 onCommentAdded={incrementCommentCount}
                 handleDeletePost={handleDeletePost}
                 handleBlockUser={blockUser}
+                handleReportPost={submitContentReport}
                 handleCreatePost={handleCreatePost}
                 searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
                 feedFilter={feedFilter}
-                setFeedFilter={setFeedFilter}
                 currentUser={profile}
               />
             )}
 
             {activeTab === 'network' && (
-              <Peers connections={connections} handleToggleConnect={handleToggleConnect} searchQuery={searchQuery} />
+              <Peers
+                connections={connections}
+                handleToggleConnect={handleToggleConnect}
+                searchQuery={searchQuery}
+                currentUser={profile}
+                pendingPeer={pendingPeer}
+                onPendingPeerConsumed={() => setPendingPeer(null)}
+              />
             )}
 
-            {activeTab === 'rank' && <Rankings ranks={ranks} currentUserId={user.id} />}
+            {activeTab === 'rank' && <Rankings rows={leaderboardRows} loading={leaderboardLoading} currentUser={profile} />}
 
             {activeTab === 'messages' && (
               <Chat
@@ -235,6 +293,9 @@ export default function App() {
                 typeMessage={typeMessage}
                 setTypeMessage={setTypeMessage}
                 handleSendMessage={handleSendMessage}
+                currentUser={profile}
+                connections={connections}
+                startDirectChat={startDirectChat}
               />
             )}
 
@@ -249,11 +310,24 @@ export default function App() {
                 onDelete={handleDeletePost}
                 onShowAllActivity={() => setActiveTab('activity')}
                 onCreatePost={() => setActiveTab('home')}
+                onProfileUpdated={refreshProfile}
               />
             )}
           </main>
+        )}
+        </Suspense>
+
+        {/* Right Widget Sidebar for home feed only */}
+        {showRightSidebar && (
+          <RightSidebar
+            connections={connections}
+            handleToggleConnect={handleToggleConnect}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+          />
         )}
       </div>
     </div>
   );
 }
+

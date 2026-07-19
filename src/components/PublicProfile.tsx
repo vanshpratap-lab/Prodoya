@@ -3,6 +3,8 @@ import { Github, Heart, MessageCircle, Repeat2, Bot, GraduationCap, Activity, Ex
 import { supabase, type Profile, type Post } from '../lib/supabase';
 import Avatar from './Avatar';
 import { formatRelativeTime } from '../lib/time';
+import { ImageGrid } from './PostCard';
+import VideoPlayer from './VideoPlayer';
 
 interface PublicProfileProps {
   username: string;
@@ -156,16 +158,10 @@ export default function PublicProfile({ username }: PublicProfileProps) {
 
               <div className="feed-post-body">{post.content}</div>
 
-              {post.project_showcase_url && (
-                <div style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--color-dark-border)' }}>
-                  <img src={post.project_showcase_url} alt="Project Showcase" style={{ width: '100%', maxHeight: '350px', objectFit: 'cover' }} />
-                </div>
+              {post.image_urls && post.image_urls.length > 0 && (
+                <ImageGrid images={post.image_urls} />
               )}
-              {post.video_url && (
-                <div style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--color-dark-border)' }}>
-                  <video src={post.video_url} controls style={{ width: '100%', maxHeight: '350px', background: '#000' }} />
-                </div>
-              )}
+              {post.video_url && <VideoPlayer src={post.video_url} />}
 
               <div className="feed-post-tags">
                 {post.tags.map((tag, idx) => (

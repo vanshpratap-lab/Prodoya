@@ -16,6 +16,7 @@ export interface Profile {
   college: string;
   role: string;
   avatar_url: string;
+  cover_url: string | null;
   bio: string;
   github_url: string;
   linkedin_url: string | null;
@@ -46,7 +47,7 @@ export interface Post {
   ai_points: number;
   code_snippet: string | null;
   github_url: string | null;
-  project_showcase_url: string | null;
+  image_urls: string[];
   video_url: string | null;
   created_at: string;
   author: Profile;
@@ -55,6 +56,7 @@ export interface Post {
   repost_count: number;
   has_reposted: boolean;
   comment_count: number;
+  has_saved: boolean;
 }
 
 export interface PostComment {
@@ -71,6 +73,8 @@ export interface ChatChannel {
   name: string;
   emoji: string;
   description: string;
+  participant_1: string | null;
+  participant_2: string | null;
 }
 
 export interface DbMessage {

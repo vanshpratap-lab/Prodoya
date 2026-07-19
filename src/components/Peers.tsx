@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { UserPlus, UserCheck } from 'lucide-react';
 import Avatar from './Avatar';
 import PeerProfileView from './PeerProfileView';
+import type { Profile } from '../lib/supabase';
 
 interface Connection {
   id: string;
@@ -16,9 +17,12 @@ interface PeersProps {
   connections: Connection[];
   handleToggleConnect: (id: string) => void;
   searchQuery: string;
+  currentUser: Profile;
+  pendingPeer?: Connection | null;
+  onPendingPeerConsumed?: () => void;
 }
 
-export default function Peers({ connections, handleToggleConnect, searchQuery }: PeersProps) {
+export default function Peers({ connections, handleToggleConnect, searchQuery, currentUser, pendingPeer, onPendingPeerConsumed }: PeersProps) {
   const [loading, setLoading] = useState(true);
   const [selectedPeer, setSelectedPeer] = useState<Connection | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -28,6 +32,14 @@ export default function Peers({ connections, handleToggleConnect, searchQuery }:
     const timer = setTimeout(() => setLoading(false), 550);
     return () => clearTimeout(timer);
   }, []);
+
+  // Open a profile requested from global search, then clear the request.
+  useEffect(() => {
+    if (pendingPeer) {
+      setSelectedPeer(pendingPeer);
+      onPendingPeerConsumed?.();
+    }
+  }, [pendingPeer, onPendingPeerConsumed]);
 
   // Reset page when search query changes
   useEffect(() => {
@@ -54,8 +66,9 @@ export default function Peers({ connections, handleToggleConnect, searchQuery }:
 
   if (activePeer) {
     return (
-      <PeerProfileView 
+      <PeerProfileView
         peer={activePeer}
+        currentUser={currentUser}
         onBack={() => setSelectedPeer(null)}
         onToggleConnect={handleToggleConnect}
       />
