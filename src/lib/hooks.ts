@@ -35,13 +35,15 @@ export function usePosts(currentUserId: string | undefined) {
     }
 
     const postIds = postsData.map((p: any) => p.id);
-    const [{ data: likesData }, { data: repostsData }, { data: commentsData }] = postIds.length
+    const [{ data: likesData }, { data: repostsData }, { data: commentsData }, { data: savesData }] = postIds.length
       ? await Promise.all([
           supabase.from('post_likes').select('post_id, user_id').in('post_id', postIds),
           supabase.from('post_reposts').select('post_id, user_id, created_at').in('post_id', postIds),
           supabase.from('post_comments').select('post_id').in('post_id', postIds),
+          // RLS restricts post_saves to the caller's own rows, so no user filter is needed.
+          supabase.from('post_saves').select('post_id').in('post_id', postIds),
         ])
-      : [{ data: [] as { post_id: number; user_id: string }[] }, { data: [] as { post_id: number; user_id: string; created_at: string }[] }, { data: [] as { post_id: number }[] }];
+      : [{ data: [] as { post_id: number; user_id: string }[] }, { data: [] as { post_id: number; user_id: string; created_at: string }[] }, { data: [] as { post_id: number }[] }, { data: [] as { post_id: number }[] }];
 
     // Resolve reposter names so reposts can surface as real feed activity.
     const reposterIds = [...new Set((repostsData || []).map((r: any) => r.user_id))];
@@ -78,6 +80,8 @@ export function usePosts(currentUserId: string | undefined) {
       commentCounts.set(c.post_id, (commentCounts.get(c.post_id) || 0) + 1);
     });
 
+    const savedByMe = new Set<number>((savesData || []).map((s: { post_id: number }) => s.post_id));
+
     // Feed ranking algorithm (engagement × decay × affinity × trust — computed in Postgres).
     const { data: ranking } = await supabase.rpc('get_feed_ranking');
     setRankScores(new Map(((ranking as { post_id: number; score: number }[] | null) || []).map(r => [r.post_id, r.score])));
@@ -90,6 +94,7 @@ export function usePosts(currentUserId: string | undefined) {
         repost_count: repostCounts.get(p.id) || 0,
         has_reposted: repostedByMe.has(p.id),
         comment_count: commentCounts.get(p.id) || 0,
+        has_saved: savedByMe.has(p.id),
       })),
     );
     setLoading(false);
@@ -159,6 +164,16 @@ export function usePosts(currentUserId: string | undefined) {
     setPosts(prev => prev.map(p => (p.id === postId ? { ...p, comment_count: p.comment_count + 1 } : p)));
   };
 
+  const toggleSave = async (postId: number) => {
+    if (!currentUserId) return;
+    const wasSaved = posts.find(p => p.id === postId)?.has_saved ?? false;
+    setPosts(prev => prev.map(p => (p.id === postId ? { ...p, has_saved: !wasSaved } : p)));
+    const { error } = wasSaved
+      ? await supabase.from('post_saves').delete().eq('post_id', postId).eq('user_id', currentUserId)
+      : await supabase.from('post_saves').insert({ post_id: postId, user_id: currentUserId });
+    if (error) await fetchPosts();
+  };
+
   const deletePost = async (postId: number) => {
     if (!currentUserId) return;
     // Optimistically remove the post and any repost activity referencing it.
@@ -204,7 +219,71 @@ export function usePosts(currentUserId: string | undefined) {
     return new Date(b.activity_at).getTime() - new Date(a.activity_at).getTime();
   });
 
-  return { posts, feedItems, loading, createPost, toggleLike, toggleRepost, incrementCommentCount, deletePost, blockUser, refetch: fetchPosts };
+  return { posts, feedItems, loading, createPost, toggleLike, toggleRepost, toggleSave, incrementCommentCount, deletePost, blockUser, refetch: fetchPosts };
+}
+
+// ─── Content reports ────────────────────────────────────────────────────────
+
+export type ReportReason = 'spam' | 'harassment' | 'misinformation' | 'inappropriate' | 'other';
+
+export async function submitContentReport(input: {
+  reporterId: string;
+  postId?: number;
+  reportedUserId?: string;
+  reason: ReportReason;
+  details?: string;
+}): Promise<void> {
+  const { error } = await supabase.from('content_reports').insert({
+    reporter_id: input.reporterId,
+    post_id: input.postId ?? null,
+    reported_user_id: input.reportedUserId ?? null,
+    reason: input.reason,
+    details: input.details?.trim() || null,
+  });
+  if (error) throw error;
+}
+
+// ─── Global search ──────────────────────────────────────────────────────────
+
+export interface SearchResults {
+  people: Profile[];
+  posts: Post[];
+}
+
+// Case-insensitive search over real data only: profiles (name, username,
+// college, role, tech stack) and posts (content, tags).
+export async function searchEverything(query: string): Promise<SearchResults> {
+  const q = query.trim();
+  if (q.length < 2) return { people: [], posts: [] };
+  // Strip characters that PostgREST's or()/ilike filter grammar treats as syntax.
+  const like = `%${q.replace(/[%_]/g, m => `\\${m}`).replace(/[,()."]/g, ' ').trim()}%`;
+
+  const [{ data: people }, { data: posts }] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('*')
+      .or(`full_name.ilike.${like},username.ilike.${like},college.ilike.${like},role.ilike.${like}`)
+      .limit(6),
+    supabase
+      .from('posts')
+      .select('*, author:profiles!posts_author_id_fkey(*)')
+      .ilike('content', like)
+      .order('created_at', { ascending: false })
+      .limit(6),
+  ]);
+
+  return {
+    people: (people || []) as Profile[],
+    posts: ((posts || []) as any[]).map(p => ({
+      ...p,
+      like_count: 0,
+      has_liked: false,
+      repost_count: 0,
+      has_reposted: false,
+      comment_count: 0,
+      has_saved: false,
+    })) as Post[],
+  };
 }
 
 export interface FeedItem extends Post {

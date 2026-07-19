@@ -15,11 +15,22 @@ const ProfileView = lazy(() => import('./components/ProfileView'));
 const Activity = lazy(() => import('./components/Activity'));
 const AiChat = lazy(() => import('./components/AiChat'));
 import { useAuth } from './lib/AuthContext';
-import { usePosts, useConnections, useCommunityChat, useNotifications, useLeaderboard } from './lib/hooks';
+import { usePosts, useConnections, useCommunityChat, useNotifications, useLeaderboard, submitContentReport } from './lib/hooks';
 import { formatRelativeTime } from './lib/time';
 import { playNotificationChime } from './lib/sound';
+import type { Profile } from './lib/supabase';
 
 const POINTS_MAP = { beginner: 10, intermediate: 20, advanced: 35 } as const;
+
+// A person opened from global search — shaped like a Connection for PeerProfileView.
+export interface PeerTarget {
+  id: string;
+  name: string;
+  role: string;
+  college: string;
+  avatar: string;
+  connected: boolean;
+}
 
 export default function App() {
   const { session, user, profile, loading: authLoading, refreshProfile, signOut } = useAuth();
@@ -30,9 +41,10 @@ export default function App() {
   const [feedFilter] = useState<'all' | 'aiml' | 'webdev' | 'opensource' | 'hackathons'>('all');
   const [selectedChatId, setSelectedChatId] = useState<number>(1);
   const [typeMessage, setTypeMessage] = useState('');
+  const [pendingPeer, setPendingPeer] = useState<PeerTarget | null>(null);
 
   const userId = user?.id;
-  const { feedItems, createPost, toggleLike, toggleRepost, incrementCommentCount, deletePost, blockUser } = usePosts(userId);
+  const { feedItems, createPost, toggleLike, toggleRepost, toggleSave, incrementCommentCount, deletePost, blockUser } = usePosts(userId);
   const { connections, toggleConnect, connectionCount } = useConnections(userId);
   const { chats, sendMessage, startDirectChat } = useCommunityChat(userId);
   const {
@@ -91,6 +103,7 @@ export default function App() {
     codeSnippet: p.code_snippet ?? undefined,
     images: p.image_urls ?? [],
     videoUrl: p.video_url ?? undefined,
+    hasSaved: p.has_saved,
   }));
 
   const handleCreatePost = async (
@@ -136,6 +149,22 @@ export default function App() {
   // The signed-in user's own authored posts (original entries only, newest first).
   const myPosts = feedPosts.filter(p => p.authorId === user.id && !p.repostedBy);
 
+  const handleOpenProfile = (target: Profile) => {
+    if (target.id === user.id) {
+      setActiveTab('profile');
+      return;
+    }
+    setPendingPeer({
+      id: target.id,
+      name: target.full_name,
+      role: target.role,
+      college: target.college ?? '',
+      avatar: target.avatar_url ?? '',
+      connected: connections.find(c => c.id === target.id)?.connected ?? false,
+    });
+    setActiveTab('network');
+  };
+
   const handleToggleConnect = (id: string) => {
     // Chime for the initiating user only when a new connection request goes out (not on disconnect).
     const alreadyConnected = connections.find(c => c.id === id)?.connected;
@@ -171,6 +200,7 @@ export default function App() {
         notificationsCount={unreadCount}
         profile={profile}
         onSignOut={signOut}
+        onOpenProfile={handleOpenProfile}
       />
 
       {/* Main Container Wrapper */}
@@ -229,9 +259,11 @@ export default function App() {
                 feedPosts={feedPosts}
                 handleLikePost={handleLikePost}
                 handleRepostPost={handleRepostPost}
+                handleSavePost={toggleSave}
                 onCommentAdded={incrementCommentCount}
                 handleDeletePost={handleDeletePost}
                 handleBlockUser={blockUser}
+                handleReportPost={submitContentReport}
                 handleCreatePost={handleCreatePost}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
@@ -241,7 +273,14 @@ export default function App() {
             )}
 
             {activeTab === 'network' && (
-              <Peers connections={connections} handleToggleConnect={handleToggleConnect} searchQuery={searchQuery} currentUser={profile} />
+              <Peers
+                connections={connections}
+                handleToggleConnect={handleToggleConnect}
+                searchQuery={searchQuery}
+                currentUser={profile}
+                pendingPeer={pendingPeer}
+                onPendingPeerConsumed={() => setPendingPeer(null)}
+              />
             )}
 
             {activeTab === 'rank' && <Rankings rows={leaderboardRows} loading={leaderboardLoading} currentUser={profile} />}

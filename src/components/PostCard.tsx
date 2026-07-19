@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   Github, Heart, ExternalLink, Loader2, GraduationCap, Bot, Flame,
   MessageCircle, Repeat2, Send, Check, MoreHorizontal, Trash2, Ban, X,
+  Bookmark, Flag,
 } from 'lucide-react';
 import Avatar from './Avatar';
 import type { Profile } from '../lib/supabase';
@@ -240,7 +241,18 @@ export interface FeedPost {
   images?: string[];
   codeSnippet?: string;
   videoUrl?: string;
+  hasSaved?: boolean;
 }
+
+export type ReportReason = 'spam' | 'harassment' | 'misinformation' | 'inappropriate' | 'other';
+
+const REPORT_REASONS: { value: ReportReason; label: string }[] = [
+  { value: 'spam', label: 'Spam or misleading' },
+  { value: 'harassment', label: 'Harassment or hate' },
+  { value: 'misinformation', label: 'False information' },
+  { value: 'inappropriate', label: 'Inappropriate content' },
+  { value: 'other', label: 'Something else' },
+];
 
 function PostComments({ postId, currentUser, expanded, onCommentAdded }: { postId: number; currentUser: Profile; expanded: boolean; onCommentAdded: () => void }) {
   const { comments, loading, addComment } = usePostComments(postId, expanded);
@@ -309,19 +321,42 @@ interface PostCardProps {
   currentUser: Profile;
   onLike: (id: number) => void;
   onRepost: (id: number) => void;
+  onSave?: (id: number) => void;
   onCommentAdded: (id: number) => void;
   onDelete?: (id: number) => void;
   onBlockAuthor?: (authorId: string) => void;
+  onReport?: (input: { reporterId: string; postId?: number; reason: ReportReason; details?: string }) => Promise<void>;
   /** Tighter padding/spacing and capped media height — used in profile/activity previews. */
   compact?: boolean;
 }
 
-export default function PostCard({ post, currentUser, onLike, onRepost, onCommentAdded, onDelete, onBlockAuthor, compact }: PostCardProps) {
+export default function PostCard({ post, currentUser, onLike, onRepost, onSave, onCommentAdded, onDelete, onBlockAuthor, onReport, compact }: PostCardProps) {
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState<ReportReason>('spam');
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportDone, setReportDone] = useState(false);
+
+  const submitReport = async () => {
+    if (!onReport || reportSubmitting) return;
+    setReportSubmitting(true);
+    try {
+      await onReport({ reporterId: currentUser.id, postId: post.id, reason: reportReason });
+      setReportDone(true);
+      setTimeout(() => {
+        setReportOpen(false);
+        setReportDone(false);
+      }, 1600);
+    } catch {
+      setReportSubmitting(false);
+    } finally {
+      setReportSubmitting(false);
+    }
+  };
 
   const isJustCreated = post.time === 'Just now';
   const isOwner = post.authorId === currentUser.id;
@@ -395,7 +430,7 @@ export default function PostCard({ post, currentUser, onLike, onRepost, onCommen
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span className="feed-post-time">{post.time}</span>
-          {((isOwner && onDelete) || (!isOwner && onBlockAuthor)) && (
+          {((isOwner && onDelete) || (!isOwner && (onBlockAuthor || onReport))) && (
             <div style={{ position: 'relative' }}>
               <button
                 type="button"
@@ -413,23 +448,42 @@ export default function PostCard({ post, currentUser, onLike, onRepost, onCommen
                       position: 'absolute', right: 0, top: '32px', zIndex: 30,
                       background: 'var(--color-surface)', border: '1px solid var(--color-dark-border)',
                       borderRadius: '12px', boxShadow: 'var(--shadow-lg)', padding: '6px',
-                      minWidth: confirmDelete ? '220px' : '160px', animation: 'fadeIn 0.15s ease',
+                      minWidth: confirmDelete ? '220px' : '170px', animation: 'fadeIn 0.15s ease',
                     }}
                   >
                     {!confirmDelete ? (
-                      <button
-                        type="button"
-                        onClick={() => setConfirmDelete(true)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: '8px', width: '100%',
-                          padding: '8px 10px', border: 'none', background: 'none', cursor: 'pointer',
-                          borderRadius: '8px', fontSize: '0.85rem', color: '#dc2626', fontWeight: 600, textAlign: 'left',
-                        }}
-                        className="feed-post-menu-item"
-                      >
-                        {isOwner ? <Trash2 size={15} /> : <Ban size={15} />}
-                        {isOwner ? 'Delete post' : `Block ${post.author}`}
-                      </button>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        {!isOwner && onReport && (
+                          <button
+                            type="button"
+                            onClick={() => { setMenuOpen(false); setReportOpen(true); }}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: '8px', width: '100%',
+                              padding: '8px 10px', border: 'none', background: 'none', cursor: 'pointer',
+                              borderRadius: '8px', fontSize: '0.85rem', color: 'var(--color-text-light)', fontWeight: 600, textAlign: 'left',
+                            }}
+                            className="feed-post-menu-item"
+                          >
+                            <Flag size={15} />
+                            Report post
+                          </button>
+                        )}
+                        {((isOwner && onDelete) || (!isOwner && onBlockAuthor)) && (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDelete(true)}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: '8px', width: '100%',
+                              padding: '8px 10px', border: 'none', background: 'none', cursor: 'pointer',
+                              borderRadius: '8px', fontSize: '0.85rem', color: '#dc2626', fontWeight: 600, textAlign: 'left',
+                            }}
+                            className="feed-post-menu-item"
+                          >
+                            {isOwner ? <Trash2 size={15} /> : <Ban size={15} />}
+                            {isOwner ? 'Delete post' : `Block ${post.author}`}
+                          </button>
+                        )}
+                      </div>
                     ) : (
                       <div style={{ padding: '6px 8px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         <span style={{ fontSize: '0.82rem', color: 'var(--color-text-light)' }}>
@@ -545,6 +599,19 @@ export default function PostCard({ post, currentUser, onLike, onRepost, onCommen
           {copied ? 'Copied!' : 'Share'}
         </button>
 
+        {onSave && (
+          <button
+            type="button"
+            className={`feed-action-btn ${post.hasSaved ? 'saved' : ''}`}
+            onClick={() => onSave(post.id)}
+            style={{ color: post.hasSaved ? 'var(--color-primary)' : undefined }}
+            aria-pressed={post.hasSaved}
+          >
+            <Bookmark size={16} fill={post.hasSaved ? 'currentColor' : 'none'} style={{ marginRight: '4px' }} />
+            {post.hasSaved ? 'Saved' : 'Save'}
+          </button>
+        )}
+
         {post.githubUrl && (
           <a
             href={post.githubUrl}
@@ -561,6 +628,100 @@ export default function PostCard({ post, currentUser, onLike, onRepost, onCommen
       </div>
 
       <PostComments postId={post.id} currentUser={currentUser} expanded={commentsOpen} onCommentAdded={() => onCommentAdded(post.id)} />
+
+      {reportOpen && onReport && createPortal(
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Report post"
+          style={{
+            position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(15, 23, 42, 0.55)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px',
+            animation: 'fadeIn 0.15s ease',
+          }}
+          onClick={() => !reportSubmitting && setReportOpen(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: '400px', background: 'var(--color-surface)',
+              border: '1px solid var(--color-dark-border)', borderRadius: '18px',
+              boxShadow: 'var(--shadow-lg)', padding: '22px', display: 'flex', flexDirection: 'column', gap: '16px',
+            }}
+          >
+            {reportDone ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', padding: '12px 0' }}>
+                <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'rgba(5, 150, 105, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Check size={24} style={{ color: '#059669' }} />
+                </div>
+                <span style={{ fontWeight: 700, color: 'var(--color-text-strong)' }}>Report submitted</span>
+                <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted-light)', textAlign: 'center' }}>
+                  Thanks — our team will review this post.
+                </span>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                    <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text-strong)' }}>Report this post</span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted-light)' }}>Why are you reporting it?</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setReportOpen(false)}
+                    aria-label="Close"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted-light)', padding: 0 }}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {REPORT_REASONS.map(r => (
+                    <button
+                      key={r.value}
+                      type="button"
+                      onClick={() => setReportReason(r.value)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '10px', width: '100%',
+                        padding: '10px 12px', borderRadius: '10px', cursor: 'pointer', textAlign: 'left',
+                        border: reportReason === r.value ? '1.5px solid var(--color-primary)' : '1px solid var(--color-dark-border)',
+                        background: reportReason === r.value ? 'var(--color-primary-soft)' : 'var(--color-surface)',
+                        color: 'var(--color-text-strong)', fontSize: '0.85rem', fontWeight: 600,
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: '16px', height: '16px', borderRadius: '50%', flexShrink: 0,
+                          border: reportReason === r.value ? '5px solid var(--color-primary)' : '2px solid var(--color-dark-border)',
+                          transition: 'all 0.15s ease',
+                        }}
+                      />
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={submitReport}
+                  disabled={reportSubmitting}
+                  style={{
+                    padding: '11px', borderRadius: '12px', border: 'none', cursor: 'pointer',
+                    background: 'var(--color-primary)', color: 'var(--color-on-primary)',
+                    fontSize: '0.88rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                  }}
+                >
+                  {reportSubmitting ? <Loader2 size={15} className="animate-spin" /> : <Flag size={15} />}
+                  Submit report
+                </button>
+              </>
+            )}
+          </div>
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }

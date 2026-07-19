@@ -18,9 +18,11 @@ interface PeersProps {
   handleToggleConnect: (id: string) => void;
   searchQuery: string;
   currentUser: Profile;
+  pendingPeer?: Connection | null;
+  onPendingPeerConsumed?: () => void;
 }
 
-export default function Peers({ connections, handleToggleConnect, searchQuery, currentUser }: PeersProps) {
+export default function Peers({ connections, handleToggleConnect, searchQuery, currentUser, pendingPeer, onPendingPeerConsumed }: PeersProps) {
   const [loading, setLoading] = useState(true);
   const [selectedPeer, setSelectedPeer] = useState<Connection | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -30,6 +32,14 @@ export default function Peers({ connections, handleToggleConnect, searchQuery, c
     const timer = setTimeout(() => setLoading(false), 550);
     return () => clearTimeout(timer);
   }, []);
+
+  // Open a profile requested from global search, then clear the request.
+  useEffect(() => {
+    if (pendingPeer) {
+      setSelectedPeer(pendingPeer);
+      onPendingPeerConsumed?.();
+    }
+  }, [pendingPeer, onPendingPeerConsumed]);
 
   // Reset page when search query changes
   useEffect(() => {

@@ -56,6 +56,7 @@ export interface Post {
   repost_count: number;
   has_reposted: boolean;
   comment_count: number;
+  has_saved: boolean;
 }
 
 export interface PostComment {

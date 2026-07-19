@@ -764,6 +764,31 @@ body {
   fill: rgba(5, 150, 105, 0.15);
 }
 
+.feed-action-btn.saved {
+  color: var(--color-primary);
+}
+
+/* Global search — top-bar slot + focus/hover polish */
+.top-bar-search-slot {
+  width: 300px;
+  max-width: 34vw;
+}
+
+.global-search-box:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+
+.global-search-post:hover {
+  background: var(--color-surface-elevated);
+}
+
+@media (max-width: 900px) {
+  .top-bar-search-slot {
+    display: none;
+  }
+}
+
 .feed-composer-icon-btn {
   background: none;
   border: none;

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Video, Image as ImageIcon, X, Loader2, Search, Mic, Plus } from 'lucide-react';
+import { Video, Image as ImageIcon, X, Loader2, Search, Mic, Plus, Bookmark } from 'lucide-react';
 import Avatar from './Avatar';
 import type { Profile } from '../lib/supabase';
 import { uploadPostMedia, MAX_POST_IMAGES } from '../lib/hooks';
@@ -11,9 +11,16 @@ interface FeedProps {
   feedPosts: FeedPost[];
   handleLikePost: (id: number) => void;
   handleRepostPost: (id: number) => void;
+  handleSavePost: (id: number) => void;
   onCommentAdded: (id: number) => void;
   handleDeletePost: (id: number) => void;
   handleBlockUser: (authorId: string) => void;
+  handleReportPost: (input: {
+    reporterId: string;
+    postId?: number;
+    reason: 'spam' | 'harassment' | 'misinformation' | 'inappropriate' | 'other';
+    details?: string;
+  }) => Promise<void>;
   handleCreatePost: (
     text: string,
     difficulty: 'beginner' | 'intermediate' | 'advanced',
@@ -30,15 +37,18 @@ export default function Feed({
   feedPosts,
   handleLikePost,
   handleRepostPost,
+  handleSavePost,
   onCommentAdded,
   handleDeletePost,
   handleBlockUser,
+  handleReportPost,
   handleCreatePost,
   searchQuery,
   setSearchQuery,
   feedFilter,
   currentUser,
 }: FeedProps) {
+  const [savedOnly, setSavedOnly] = useState(false);
   const [newPostText, setNewPostText] = useState('');
   const [difficulty, setDifficulty] = useState<'beginner' | 'intermediate' | 'advanced'>('intermediate');
   const [category, setCategory] = useState('webdev');
@@ -143,6 +153,7 @@ export default function Feed({
                           post.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
 
     if (!matchesSearch) return false;
+    if (savedOnly && !post.hasSaved) return false;
 
     if (feedFilter === 'all') return true;
     if (feedFilter === 'aiml') return post.tags.includes('#ai') || post.tags.includes('#aiml');
@@ -431,6 +442,46 @@ export default function Feed({
       {/* Feeds Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-text-strong)' }}>Feeds</span>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            type="button"
+            onClick={() => setSavedOnly(false)}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '999px',
+              border: savedOnly ? '1px solid var(--color-dark-border)' : '1.5px solid var(--color-primary)',
+              background: savedOnly ? 'var(--color-surface)' : 'var(--color-primary-soft)',
+              color: savedOnly ? 'var(--color-text-light)' : 'var(--color-primary)',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.18s ease',
+            }}
+          >
+            All
+          </button>
+          <button
+            type="button"
+            onClick={() => setSavedOnly(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              borderRadius: '999px',
+              border: savedOnly ? '1.5px solid var(--color-primary)' : '1px solid var(--color-dark-border)',
+              background: savedOnly ? 'var(--color-primary-soft)' : 'var(--color-surface)',
+              color: savedOnly ? 'var(--color-primary)' : 'var(--color-text-light)',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.18s ease',
+            }}
+          >
+            <Bookmark size={13} />
+            Saved
+          </button>
+        </div>
       </div>
 
       {/* Loading Skeleton States */}
@@ -453,8 +504,20 @@ export default function Feed({
       ) : filteredFeedPosts.length === 0 ? (
         /* Empty State */
         <div style={{ textAlign: 'center', padding: '60px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', color: 'var(--color-text-strong)', fontWeight: 500 }}>No proof-of-work posts found</h3>
-          <p style={{ color: 'var(--color-text-muted-light)', fontSize: '0.9rem', maxWidth: '380px' }}>There are no learning activities registered under this tag or matching your search. Be the first to share an update!</p>
+          {savedOnly ? (
+            <>
+              <div style={{ width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-primary-soft)' }}>
+                <Bookmark size={26} style={{ color: 'var(--color-primary)' }} />
+              </div>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', color: 'var(--color-text-strong)', fontWeight: 500 }}>No saved posts yet</h3>
+              <p style={{ color: 'var(--color-text-muted-light)', fontSize: '0.9rem', maxWidth: '380px' }}>Tap the bookmark on any post to save it here for later.</p>
+            </>
+          ) : (
+            <>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', color: 'var(--color-text-strong)', fontWeight: 500 }}>No proof-of-work posts found</h3>
+              <p style={{ color: 'var(--color-text-muted-light)', fontSize: '0.9rem', maxWidth: '380px' }}>There are no learning activities registered under this tag or matching your search. Be the first to share an update!</p>
+            </>
+          )}
         </div>
       ) : (
         /* Posts Feed */
@@ -465,9 +528,11 @@ export default function Feed({
             currentUser={currentUser}
             onLike={handleLikePost}
             onRepost={handleRepostPost}
+            onSave={handleSavePost}
             onCommentAdded={onCommentAdded}
             onDelete={handleDeletePost}
             onBlockAuthor={handleBlockUser}
+            onReport={handleReportPost}
           />
         ))
       )}

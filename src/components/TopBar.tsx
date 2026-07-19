@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Menu, Bell, Sparkles } from 'lucide-react';
 import Avatar from './Avatar';
+import GlobalSearch from './GlobalSearch';
 import type { Profile } from '../lib/supabase';
 
 interface TopBarProps {
@@ -10,6 +11,7 @@ interface TopBarProps {
   notificationsCount: number;
   profile: Profile;
   onSignOut: () => void;
+  onOpenProfile: (profile: Profile) => void;
 }
 
 export default function TopBar({
@@ -19,6 +21,7 @@ export default function TopBar({
   notificationsCount,
   profile,
   onSignOut,
+  onOpenProfile,
 }: TopBarProps) {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
@@ -80,6 +83,10 @@ export default function TopBar({
       </nav>
 
       <div className="top-bar-profile-area" style={{ gap: '16px', position: 'relative' }}>
+        <div className="top-bar-search-slot">
+          <GlobalSearch onOpenProfile={onOpenProfile} />
+        </div>
+
         <button
           onClick={() => setActiveTab('notifications')}
           className="relative p-2 rounded-full transition-colors"
