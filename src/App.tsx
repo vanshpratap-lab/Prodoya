@@ -1,17 +1,19 @@
-import { useState, type FormEvent } from 'react';
+import { useState, Suspense, lazy, type FormEvent } from 'react';
 import { Loader2 } from 'lucide-react';
 import TopBar from './components/TopBar';
 import Sidebar from './components/Sidebar';
 import RightSidebar from './components/RightSidebar';
 import Feed from './components/Feed';
-import Peers from './components/Peers';
-import Rankings from './components/Rankings';
-import Chat from './components/Chat';
-import Notifications from './components/Notifications';
-import ProfileView from './components/ProfileView';
-import Activity from './components/Activity';
-import AiChat from './components/AiChat';
 import Auth from './components/Auth';
+
+// Every non-default tab is code-split so the first paint ships only the feed.
+const Peers = lazy(() => import('./components/Peers'));
+const Rankings = lazy(() => import('./components/Rankings'));
+const Chat = lazy(() => import('./components/Chat'));
+const Notifications = lazy(() => import('./components/Notifications'));
+const ProfileView = lazy(() => import('./components/ProfileView'));
+const Activity = lazy(() => import('./components/Activity'));
+const AiChat = lazy(() => import('./components/AiChat'));
 import { useAuth } from './lib/AuthContext';
 import { usePosts, useConnections, useCommunityChat, useNotifications, useLeaderboard } from './lib/hooks';
 import { formatRelativeTime } from './lib/time';
@@ -182,6 +184,13 @@ export default function App() {
           />
         )}
 
+        <Suspense
+          fallback={
+            <main className="content-area" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Loader2 size={26} className="animate-spin" style={{ color: 'var(--color-primary)' }} />
+            </main>
+          }
+        >
         {activeTab === 'ai' ? (
           <main className="content-area" style={{ padding: 0 }}>
             <AiChat currentUser={profile} sidebarOpen={sidebarOpen} />
@@ -267,6 +276,7 @@ export default function App() {
             )}
           </main>
         )}
+        </Suspense>
 
         {/* Right Widget Sidebar for home feed only */}
         {showRightSidebar && (
