@@ -1,6 +1,7 @@
-# Engineer Network — Proof-of-Work Community for Engineering Students
+# Engineer Network â€” Proof-of-Work Community for Engineering Students
 
-> A full-stack social platform where engineering students prove their technical work through a ranked, AI-powered feed — not likes and vibes, but real code, projects, and contributions.
+> A full-stack social platform where engineering students prove their technical work through a ranked, AI-powered feed â€” not likes and vibes, but real code, projects, and contributions.
+
 
 ---
 
@@ -13,7 +14,7 @@
 5. [Architecture Overview](#architecture-overview)
 6. [Database Schema & Backend](#database-schema--backend)
 7. [Ranking & Trust Algorithm](#ranking--trust-algorithm)
-8. [Project Structure — Every File Explained](#project-structure--every-file-explained)
+8. [Project Structure â€” Every File Explained](#project-structure--every-file-explained)
 9. [Pages / Views (Tab-Based Routing)](#pages--views-tab-based-routing)
 10. [Authentication Flow](#authentication-flow)
 11. [Real-Time Features](#real-time-features)
@@ -29,9 +30,9 @@
 
 ## What Is This Project?
 
-**Engineer Network** is a proof-of-work community platform designed specifically for engineering students. Unlike generic social media that rewards popularity, this platform rewards **actual engineering work** — posting a project, sharing a code snippet, linking a GitHub repo, contributing to open source, or logging a learning session.
+**Engineer Network** is a proof-of-work community platform designed specifically for engineering students. Unlike generic social media that rewards popularity, this platform rewards **actual engineering work** â€” posting a project, sharing a code snippet, linking a GitHub repo, contributing to open source, or logging a learning session.
 
-Every post is assigned a **difficulty level** (Beginner / Intermediate / Advanced) and **points** are automatically awarded. A server-side ranking algorithm orders the feed based on engagement, time decay, author reputation, and your personal network — all computed in Postgres so nothing can be gamed from the client.
+Every post is assigned a **difficulty level** (Beginner / Intermediate / Advanced) and **points** are automatically awarded. A server-side ranking algorithm orders the feed based on engagement, time decay, author reputation, and your personal network â€” all computed in Postgres so nothing can be gamed from the client.
 
 The platform includes:
 - A **ranked social feed** with proof-of-work posts
@@ -90,7 +91,7 @@ The answer: make every post a proof-of-work artifact. Attach difficulty grades. 
 | **Bundler** | Vite 8 |
 | **Styling** | Vanilla CSS (custom design system in index.css) |
 | **Icons** | Lucide React |
-| **Fonts** | Google Fonts — Inter, Italiana, Italianno |
+| **Fonts** | Google Fonts â€” Inter, Italiana, Italianno |
 | **Backend / DB** | Supabase (PostgreSQL + Row Level Security) |
 | **Auth** | Supabase Auth (email, Google, GitHub OAuth) |
 | **Realtime** | Supabase Realtime (Postgres Changes) |
@@ -142,7 +143,7 @@ Supabase (Cloud Backend)
 
 ## Database Schema & Backend
 
-All data lives in Supabase PostgreSQL. The client never does raw SQL — it goes through Supabase RPCs (stored procedures) or direct table access protected by Row Level Security (RLS).
+All data lives in Supabase PostgreSQL. The client never does raw SQL â€” it goes through Supabase RPCs (stored procedures) or direct table access protected by Row Level Security (RLS).
 
 ### Tables
 
@@ -179,7 +180,7 @@ All data lives in Supabase PostgreSQL. The client never does raw SQL — it goes t
 
 > See [ALGORITHM.md](./ALGORITHM.md) for the full mathematical breakdown.
 
-The ranking system runs 100% in Postgres — the browser cannot manipulate scores.
+The ranking system runs 100% in Postgres â€” the browser cannot manipulate scores.
 
 ### Feed Ranking (get_feed_ranking)
 
@@ -187,13 +188,13 @@ Each post's score is a **product of seven multiplied factors**:
 
 | Factor | Formula | Rationale |
 |---|---|---|
-| Engagement | `1 + likes×1 + comments×3 + reposts×5` | Comments beat likes; reposts signal real value |
-| Time decay | `1 / (age_hours + 2)^1.5` | Hacker News-style power-law — fresh wins unless engagement is real |
-| Difficulty | `beginner×1.0 · intermediate×1.15 · advanced×1.3` | Harder posts rank higher |
-| Author quality | `1 + min(points, 2000)/4000` (max ×1.5) | Reputation amplifies reach, but capped |
-| Affinity | ×1.5 if connected to author | Personalised to your network |
-| Discovery boost | ×1.2 if author joined < 7 days ago | Cold-start problem solved |
-| Block penalty | `1 / (1 + blocks_against_author × 0.5)` | Community-downvotes lose reach |
+| Engagement | `1 + likesÃ—1 + commentsÃ—3 + repostsÃ—5` | Comments beat likes; reposts signal real value |
+| Time decay | `1 / (age_hours + 2)^1.5` | Hacker News-style power-law â€” fresh wins unless engagement is real |
+| Difficulty | `beginnerÃ—1.0 Â· intermediateÃ—1.15 Â· advancedÃ—1.3` | Harder posts rank higher |
+| Author quality | `1 + min(points, 2000)/4000` (max Ã—1.5) | Reputation amplifies reach, but capped |
+| Affinity | Ã—1.5 if connected to author | Personalised to your network |
+| Discovery boost | Ã—1.2 if author joined < 7 days ago | Cold-start problem solved |
+| Block penalty | `1 / (1 + blocks_against_author Ã— 0.5)` | Community-downvotes lose reach |
 
 ### Reputation Points (DB Triggers)
 
@@ -206,17 +207,17 @@ Each post's score is a **product of seven multiplied factors**:
 ### Peer Discovery (get_peer_suggestions)
 
 ```
-score = mutual_connections×3 + same_college×2 + min(points,2000)/1000 + new_member×1
+score = mutual_connectionsÃ—3 + same_collegeÃ—2 + min(points,2000)/1000 + new_memberÃ—1
 ```
 
 ### Anti-Spam
 
-- Max 5 posts per rolling hour (DB trigger — cannot be bypassed client-side)
-- All writes go through RLS — auth.uid() must match the author
+- Max 5 posts per rolling hour (DB trigger â€” cannot be bypassed client-side)
+- All writes go through RLS â€” auth.uid() must match the author
 
 ---
 
-## Project Structure — Every File Explained
+## Project Structure â€” Every File Explained
 
 ```
 polywork-main/
@@ -233,31 +234,31 @@ polywork-main/
 +-- vercel.json                  SPA rewrite: all paths ? index.html
 +-- ALGORITHM.md                 Full documentation of the ranking algorithm
 +-- README.md                    This file
-¦
+Â¦
 +-- public/                      Static assets served at root
-¦   +-- favicon.svg              Browser tab icon
-¦
+Â¦   +-- favicon.svg              Browser tab icon
+Â¦
 +-- skills/                      Custom agent skills (dev tooling, not app code)
-¦   +-- Dezine/                  Design-taste skill bundle
-¦       +-- ui-ux-pro-max-skill/ UI/UX design intelligence tools
-¦       +-- taste-skill/         Design taste & aesthetic guidelines
-¦       +-- hallmark/            Brand hallmark guidelines
-¦
+Â¦   +-- Dezine/                  Design-taste skill bundle
+Â¦       +-- ui-ux-pro-max-skill/ UI/UX design intelligence tools
+Â¦       +-- taste-skill/         Design taste & aesthetic guidelines
+Â¦       +-- hallmark/            Brand hallmark guidelines
+Â¦
 +-- src/                         All application source code
-    +-- main.tsx                 Entry point — route split public vs. app
+    +-- main.tsx                 Entry point â€” route split public vs. app
     +-- App.tsx                  Root layout + state orchestration
     +-- App.css                  App-level component styles
     +-- index.css                Global design system (tokens, layout, all styles)
     +-- assets/                  Static assets bundled by Vite
-    ¦   +-- hero.png             Hero image used in auth/landing
-    ¦   +-- react.svg            React logo (scaffold leftover)
-    ¦   +-- vite.svg             Vite logo (scaffold leftover)
+    Â¦   +-- hero.png             Hero image used in auth/landing
+    Â¦   +-- react.svg            React logo (scaffold leftover)
+    Â¦   +-- vite.svg             Vite logo (scaffold leftover)
     +-- lib/                     Core logic, types, utilities
-    ¦   +-- supabase.ts          Supabase client + all TypeScript interfaces
-    ¦   +-- AuthContext.tsx      React context for auth state + profile
-    ¦   +-- hooks.ts             All data-fetching custom hooks (622 lines)
-    ¦   +-- time.ts              Time formatting utilities
-    ¦   +-- sound.ts             Web Audio API notification chime
+    Â¦   +-- supabase.ts          Supabase client + all TypeScript interfaces
+    Â¦   +-- AuthContext.tsx      React context for auth state + profile
+    Â¦   +-- hooks.ts             All data-fetching custom hooks (622 lines)
+    Â¦   +-- time.ts              Time formatting utilities
+    Â¦   +-- sound.ts             Web Audio API notification chime
     +-- components/              All UI components
         +-- Avatar.tsx           Deterministic-color avatar (image or initials)
         +-- TopBar.tsx           Top navigation bar with search
@@ -280,88 +281,88 @@ polywork-main/
 
 ### Root Files
 
-**`index.html`** — The single HTML page Vite serves. Sets the page title, loads Google Fonts (Inter, Italiana, Italianno), and mounts the React app at `<div id="root">`. All navigation is client-side.
+**`index.html`** â€” The single HTML page Vite serves. Sets the page title, loads Google Fonts (Inter, Italiana, Italianno), and mounts the React app at `<div id="root">`. All navigation is client-side.
 
-**`vite.config.ts`** — Minimal Vite config using only `@vitejs/plugin-react` for JSX transform and Fast Refresh.
+**`vite.config.ts`** â€” Minimal Vite config using only `@vitejs/plugin-react` for JSX transform and Fast Refresh.
 
-**`tsconfig.app.json`** — TypeScript config for application source: target ES2023, DOM library, ESNext modules with bundler resolution, strict unused-locals/parameters checks, JSX via react-jsx.
+**`tsconfig.app.json`** â€” TypeScript config for application source: target ES2023, DOM library, ESNext modules with bundler resolution, strict unused-locals/parameters checks, JSX via react-jsx.
 
-**`package.json`** — Four scripts: `dev` (Vite dev server), `build` (tsc + Vite bundle), `lint` (OxLint), `preview` (serve dist). Runtime deps: supabase-js, lucide-react, react, react-dom. Dev deps: vite, typescript, @types/\*, oxlint.
+**`package.json`** â€” Four scripts: `dev` (Vite dev server), `build` (tsc + Vite bundle), `lint` (OxLint), `preview` (serve dist). Runtime deps: supabase-js, lucide-react, react, react-dom. Dev deps: vite, typescript, @types/\*, oxlint.
 
-**`vercel.json`** — Rewrites every URL path to `/index.html`. Required for client-side routing to work on Vercel (direct URL access would 404 without this).
+**`vercel.json`** â€” Rewrites every URL path to `/index.html`. Required for client-side routing to work on Vercel (direct URL access would 404 without this).
 
-**`ALGORITHM.md`** — Human-readable docs of the entire ranking/trust system. All 7 feed-ranking factors, reputation triggers, peer discovery scoring, and anti-spam rules.
+**`ALGORITHM.md`** â€” Human-readable docs of the entire ranking/trust system. All 7 feed-ranking factors, reputation triggers, peer discovery scoring, and anti-spam rules.
 
-**`.env.example`** — Template showing the two required env vars: `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
-
----
-
-### `src/` — Application Source
-
-**`src/main.tsx`** — Entry point. Checks if the URL matches `/u/:username`. If yes, renders `<PublicProfile username="...">` directly (no auth). For all other URLs, wraps `<App />` in `<AuthProvider>`. This split enables SEO-crawlable public profile pages.
-
-**`src/App.tsx`** — Root layout and state orchestration (260 lines). Manages: `activeTab`, `sidebarOpen`, `searchQuery`, `feedFilter`, `selectedChatId`, `typeMessage`. Invokes all top-level data hooks. Shows spinner on auth loading, shows Auth screen if no session. Transforms raw Supabase data into typed view models. Defines all event handlers and passes them as props. Renders: `TopBar ? main-wrapper ? Sidebar + content-area`.
-
-**`src/index.css`** — Global design system (~1,200 lines). Contains all CSS custom properties (design tokens), layout classes, all component styles, and animation keyframes. Nothing is hardcoded in component files — all colors/fonts reference tokens.
+**`.env.example`** â€” Template showing the two required env vars: `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
 
 ---
 
-### `src/lib/` — Core Logic & Data Layer
+### `src/` â€” Application Source
 
-**`supabase.ts`** — Creates the singleton Supabase client from env vars. Throws at startup if vars are missing. Exports all TypeScript interfaces: `Profile`, `EngineeringActivity`, `Post`, `PostComment`, `ChatChannel`, `DbMessage`.
+**`src/main.tsx`** â€” Entry point. Checks if the URL matches `/u/:username`. If yes, renders `<PublicProfile username="...">` directly (no auth). For all other URLs, wraps `<App />` in `<AuthProvider>`. This split enables SEO-crawlable public profile pages.
 
-**`AuthContext.tsx`** — React Context managing global auth state. On mount: restores session via `getSession()`, fetches profile, subscribes to `onAuthStateChange`. Exports `AuthProvider` and `useAuth()` hook returning `{ session, user, profile, loading, refreshProfile, signOut }`.
+**`src/App.tsx`** â€” Root layout and state orchestration (260 lines). Manages: `activeTab`, `sidebarOpen`, `searchQuery`, `feedFilter`, `selectedChatId`, `typeMessage`. Invokes all top-level data hooks. Shows spinner on auth loading, shows Auth screen if no session. Transforms raw Supabase data into typed view models. Defines all event handlers and passes them as props. Renders: `TopBar ? main-wrapper ? Sidebar + content-area`.
 
-**`hooks.ts`** (622 lines) — The entire data layer. Seven custom hooks:
-
-- **`usePosts(userId)`** — Loads 100 posts, parallel-fetches likes/reposts/comments, calls `get_feed_ranking()`, merges original posts + reposts into a ranked `feedItems[]`. Mutations: `createPost`, `toggleLike`, `toggleRepost`, `incrementCommentCount`, `deletePost`, `blockUser`.
-- **`usePostComments(postId, enabled)`** — Lazy-loaded comments for a post. `addComment()` inserts and re-fetches.
-- **`useEngineeringActivity(userId)`** — Calls `get_engineering_activity` RPC. Returns 8 real engineering metrics.
-- **`useActivityCalendar(userId)`** — Calls `get_activity_calendar` RPC. Returns `Map<date, post_count>` for 371 days.
-- **`useConnections(userId)`** — Loads all profiles + connections + `get_peer_suggestions()`. Outputs sorted `PeerCard[]`. `toggleConnect()` calls `send_connection_request` RPC or deletes the connection row.
-- **`useCommunityChat(userId)`** — Loads channels + 500 messages. Subscribes to Realtime INSERT on messages table. `sendMessage()` inserts into messages.
-- **`useNotifications(userId)`** — Loads 50 notifications. Subscribes to Realtime INSERT filtered to current user. New notifications trigger `playNotificationChime()`.
-- **`useLeaderboard()`** — Loads profiles + `get_engineering_rankings()` RPC. Merges, sorts by rank_score, slices top 50.
-
-Also exports standalone `uploadPostMedia(userId, file)` — uploads to Supabase Storage `post-media` bucket, returns public CDN URL.
-
-**`time.ts`** — Two pure functions: `formatRelativeTime(iso)` (humanised: "Just now", "5 mins ago", etc.) and `formatClockTime(iso)` (HH:MM AM/PM).
-
-**`sound.ts`** — Singleton Web Audio API context. `playNotificationChime()` plays two sine tones (740 Hz + 988 Hz, 100ms apart) with linear gain ramps.
+**`src/index.css`** â€” Global design system (~1,200 lines). Contains all CSS custom properties (design tokens), layout classes, all component styles, and animation keyframes. Nothing is hardcoded in component files â€” all colors/fonts reference tokens.
 
 ---
 
-### `src/components/` — UI Components
+### `src/lib/` â€” Core Logic & Data Layer
 
-**`Avatar.tsx`** — Props: `name`, `avatarUrl?`, `size?`, `className?`. Shows circular image if URL loads; falls back to deterministic-colored initials (first letter, color from name hash across 8 presets).
+**`supabase.ts`** â€” Creates the singleton Supabase client from env vars. Throws at startup if vars are missing. Exports all TypeScript interfaces: `Profile`, `EngineeringActivity`, `Post`, `PostComment`, `ChatChannel`, `DbMessage`.
 
-**`TopBar.tsx`** — Top navigation bar (293 lines). Left: hamburger (hidden when activeTab is 'tools') + animated expanding search input (280?360px). Center: nav links (Home Feed, Mentors & Peers, Rankings, Messages). Right: notification bell with badge, Sparkles (AI) button, avatar + profile dropdown menu.
+**`AuthContext.tsx`** â€” React Context managing global auth state. On mount: restores session via `getSession()`, fetches profile, subscribes to `onAuthStateChange`. Exports `AuthProvider` and `useAuth()` hook returning `{ session, user, profile, loading, refreshProfile, signOut }`.
 
-**`Sidebar.tsx`** — Left sidebar (110 lines). Two widgets: (1) Profile card with avatar, name, role, college, active-days stat, projects-shipped badge, peers + rank stats. (2) Proof-of-work score with animated progress bar. Collapses via `.collapsed` CSS class.
+**`hooks.ts`** (622 lines) â€” The entire data layer. Seven custom hooks:
 
-**`Feed.tsx`** (317 lines) — Home feed. Post composer (collapses, expands to textarea + difficulty + category + image/video upload). Filter tabs (All/AI-ML/WebDev/OpenSource/Hackathons). Search filter. Maps posts to `<PostCard>`. Loading skeleton on filter change.
+- **`usePosts(userId)`** â€” Loads 100 posts, parallel-fetches likes/reposts/comments, calls `get_feed_ranking()`, merges original posts + reposts into a ranked `feedItems[]`. Mutations: `createPost`, `toggleLike`, `toggleRepost`, `incrementCommentCount`, `deletePost`, `blockUser`.
+- **`usePostComments(postId, enabled)`** â€” Lazy-loaded comments for a post. `addComment()` inserts and re-fetches.
+- **`useEngineeringActivity(userId)`** â€” Calls `get_engineering_activity` RPC. Returns 8 real engineering metrics.
+- **`useActivityCalendar(userId)`** â€” Calls `get_activity_calendar` RPC. Returns `Map<date, post_count>` for 371 days.
+- **`useConnections(userId)`** â€” Loads all profiles + connections + `get_peer_suggestions()`. Outputs sorted `PeerCard[]`. `toggleConnect()` calls `send_connection_request` RPC or deletes the connection row.
+- **`useCommunityChat(userId)`** â€” Loads channels + 500 messages. Subscribes to Realtime INSERT on messages table. `sendMessage()` inserts into messages.
+- **`useNotifications(userId)`** â€” Loads 50 notifications. Subscribes to Realtime INSERT filtered to current user. New notifications trigger `playNotificationChime()`.
+- **`useLeaderboard()`** â€” Loads profiles + `get_engineering_rankings()` RPC. Merges, sorts by rank_score, slices top 50.
 
-**`PostCard.tsx`** (359 lines) — Individual post. Shows: repost banner, author info, AI difficulty badge, content, optional GitHub link + showcase image + code snippet + video. Action row: Like (heart toggles red), Comment (expands thread), Repost (toggles green), More menu (delete own / block others). Nested `PostComments` sub-component loads lazily when expanded.
+Also exports standalone `uploadPostMedia(userId, file)` â€” uploads to Supabase Storage `post-media` bucket, returns public CDN URL.
 
-**`Activity.tsx`** (201 lines) — Activity view. Two variants: `compact` (2 posts, "view all" button, embedded in ProfileView) and `full` (all posts, back button, full screen). Tabs: Posts | Images.
+**`time.ts`** â€” Two pure functions: `formatRelativeTime(iso)` (humanised: "Just now", "5 mins ago", etc.) and `formatClockTime(iso)` (HH:MM AM/PM).
 
-**`Peers.tsx`** (191 lines) — Peer discovery grid. Loading skeleton on mount. Search filter. 8 peers per page with pagination. Click a card to open `PeerProfileView`. Connect/Disconnect button per card.
+**`sound.ts`** â€” Singleton Web Audio API context. `playNotificationChime()` plays two sine tones (740 Hz + 988 Hz, 100ms apart) with linear gain ramps.
 
-**`PeerProfileView.tsx`** (629 lines) — Full in-app profile for any peer. Hero section (avatar, name, role, college, GitHub). Tech stack bars. Engineering metrics (8 stats). Trust/verification badges. Year tabs (2025/2026) + GitHub-style contribution calendar grid (53×7 cells, 5 green intensity levels). Achievements list. Read-only (no post editing).
+---
 
-**`Rankings.tsx`** (190 lines) — Engineering leaderboard. Banner showing current user's rank and points gap to #1. Podium cards for top 3 (gold/silver/bronze). Ranked list rows 4-50 with trend arrows, avatars, scores. Current user's row highlighted purple. Loading skeleton on mount.
+### `src/components/` â€” UI Components
 
-**`Chat.tsx`** (314 lines) — Community chat. Two-column layout: channel list (left) + message thread (right). Auto-scroll to newest message. Scroll-to-bottom floating button. Incoming/outgoing message bubbles. Message input with send button.
+**`Avatar.tsx`** â€” Props: `name`, `avatarUrl?`, `size?`, `className?`. Shows circular image if URL loads; falls back to deterministic-colored initials (first letter, color from name hash across 8 presets).
 
-**`AiChat.tsx`** (408 lines) — AI assistant. Conversation history in localStorage. Left panel: conversation list with search + "New chat". Right panel: message history (user right / assistant left) with "Thinking..." indicator. Welcome screen with 4 platform-specific suggestion chips when no conversation is active. Calls Supabase Edge Function `ai-chat` with full conversation history.
+**`TopBar.tsx`** â€” Top navigation bar (293 lines). Left: hamburger (hidden when activeTab is 'tools') + animated expanding search input (280?360px). Center: nav links (Home Feed, Mentors & Peers, Rankings, Messages). Right: notification bell with badge, Sparkles (AI) button, avatar + profile dropdown menu.
 
-**`Notifications.tsx`** (87 lines) — Notification list. Maps emoji icons to Lucide icons. Empty state with centered bell illustration. Each item: icon badge + text + relative time.
+**`Sidebar.tsx`** â€” Left sidebar (110 lines). Two widgets: (1) Profile card with avatar, name, role, college, active-days stat, projects-shipped badge, peers + rank stats. (2) Proof-of-work score with animated progress bar. Collapses via `.collapsed` CSS class.
 
-**`ProfileView.tsx`** (621 lines) — Own profile page. Header: avatar, name, username, role, college, bio, social links. Share profile link button. Stats row. Tech stack bars. Engineering metrics. Year selector + GitHub contribution calendar grid (built from `useActivityCalendar` data). Trust badges. Compact activity section with "View all" link.
+**`Feed.tsx`** (317 lines) â€” Home feed. Post composer (collapses, expands to textarea + difficulty + category + image/video upload). Filter tabs (All/AI-ML/WebDev/OpenSource/Hackathons). Search filter. Maps posts to `<PostCard>`. Loading skeleton on filter change.
 
-**`PublicProfile.tsx`** (215 lines) — Public read-only profile at `/u/:username`. No auth required. Fetches profile by username field, then posts with engagement counts. Shows avatar, bio, links, and post timeline. Not-found state if username doesn't exist.
+**`PostCard.tsx`** (359 lines) â€” Individual post. Shows: repost banner, author info, AI difficulty badge, content, optional GitHub link + showcase image + code snippet + video. Action row: Like (heart toggles red), Comment (expands thread), Repost (toggles green), More menu (delete own / block others). Nested `PostComments` sub-component loads lazily when expanded.
 
-**`Auth.tsx`** (467 lines) — Multi-step auth UI. Login mode: email ? password (2 steps). Signup mode: email ? password ? confirm (3 steps) with full name + college picker. Real-time validation. Password visibility toggles. Google + GitHub OAuth buttons (inline SVG icons). Inline error/info messages. Smooth step transitions.
+**`Activity.tsx`** (201 lines) â€” Activity view. Two variants: `compact` (2 posts, "view all" button, embedded in ProfileView) and `full` (all posts, back button, full screen). Tabs: Posts | Images.
+
+**`Peers.tsx`** (191 lines) â€” Peer discovery grid. Loading skeleton on mount. Search filter. 8 peers per page with pagination. Click a card to open `PeerProfileView`. Connect/Disconnect button per card.
+
+**`PeerProfileView.tsx`** (629 lines) â€” Full in-app profile for any peer. Hero section (avatar, name, role, college, GitHub). Tech stack bars. Engineering metrics (8 stats). Trust/verification badges. Year tabs (2025/2026) + GitHub-style contribution calendar grid (53Ã—7 cells, 5 green intensity levels). Achievements list. Read-only (no post editing).
+
+**`Rankings.tsx`** (190 lines) â€” Engineering leaderboard. Banner showing current user's rank and points gap to #1. Podium cards for top 3 (gold/silver/bronze). Ranked list rows 4-50 with trend arrows, avatars, scores. Current user's row highlighted purple. Loading skeleton on mount.
+
+**`Chat.tsx`** (314 lines) â€” Community chat. Two-column layout: channel list (left) + message thread (right). Auto-scroll to newest message. Scroll-to-bottom floating button. Incoming/outgoing message bubbles. Message input with send button.
+
+**`AiChat.tsx`** (408 lines) â€” AI assistant. Conversation history in localStorage. Left panel: conversation list with search + "New chat". Right panel: message history (user right / assistant left) with "Thinking..." indicator. Welcome screen with 4 platform-specific suggestion chips when no conversation is active. Calls Supabase Edge Function `ai-chat` with full conversation history.
+
+**`Notifications.tsx`** (87 lines) â€” Notification list. Maps emoji icons to Lucide icons. Empty state with centered bell illustration. Each item: icon badge + text + relative time.
+
+**`ProfileView.tsx`** (621 lines) â€” Own profile page. Header: avatar, name, username, role, college, bio, social links. Share profile link button. Stats row. Tech stack bars. Engineering metrics. Year selector + GitHub contribution calendar grid (built from `useActivityCalendar` data). Trust badges. Compact activity section with "View all" link.
+
+**`PublicProfile.tsx`** (215 lines) â€” Public read-only profile at `/u/:username`. No auth required. Fetches profile by username field, then posts with engagement counts. Shows avatar, bio, links, and post timeline. Not-found state if username doesn't exist.
+
+**`Auth.tsx`** (467 lines) â€” Multi-step auth UI. Login mode: email ? password (2 steps). Signup mode: email ? password ? confirm (3 steps) with full name + college picker. Real-time validation. Password visibility toggles. Google + GitHub OAuth buttons (inline SVG icons). Inline error/info messages. Smooth step transitions.
 
 ---
 
@@ -406,9 +407,9 @@ Profile creation is handled server-side (Supabase trigger on `auth.users` INSERT
 
 Two Supabase Realtime subscriptions are active at all times when logged in:
 
-1. **`messages-all` channel** — `INSERT` on `messages` table ? triggers `fetchAll()` in `useCommunityChat`. All chat channels update instantly for all connected users.
+1. **`messages-all` channel** â€” `INSERT` on `messages` table ? triggers `fetchAll()` in `useCommunityChat`. All chat channels update instantly for all connected users.
 
-2. **`notifications-{userId}` channel** — `INSERT` on `notifications` filtered to `user_id=currentUserId` ? appends to notifications list + plays audio chime. Connection request notifications arrive instantly for the recipient.
+2. **`notifications-{userId}` channel** â€” `INSERT` on `notifications` filtered to `user_id=currentUserId` ? appends to notifications list + plays audio chime. Connection request notifications arrive instantly for the recipient.
 
 Both subscriptions are cleaned up when their respective hook unmounts (`supabase.removeChannel(channel)` in useEffect cleanup).
 
@@ -444,7 +445,7 @@ Conversations persist to `localStorage` under key `ai-convos-{userId}`. Device-l
 
 ## Design System & Styling
 
-All styles live in `src/index.css`. CSS custom properties throughout — no hardcoded colors in component files.
+All styles live in `src/index.css`. CSS custom properties throughout â€” no hardcoded colors in component files.
 
 **Key design tokens:**
 
