@@ -3,6 +3,7 @@ import { Github, Linkedin, Twitter, ShieldCheck, Share2, Check, Briefcase, Star,
 import Avatar from './Avatar';
 import type { Profile } from '../lib/supabase';
 import Activity from './Activity';
+import Achievements from './Achievements';
 import type { FeedPost } from './PostCard';
 import { useEngineeringActivity, useActivityCalendar, updateProfileCover, updateProfileAvatar } from '../lib/hooks';
 import EditProfileModal from './EditProfileModal';
@@ -534,6 +535,9 @@ export default function ProfileView({
           ))}
         </div>
       </div>
+
+      {/* Achievements — unlocked purely by real activity thresholds */}
+      <Achievements activity={activity} postCount={myPosts.filter(p => !p.repostedBy).length} followerCount={followerCount} />
 
       {/* Posts — the user's own proof-of-work, compact cards */}
       <Activity
