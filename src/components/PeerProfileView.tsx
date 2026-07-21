@@ -3,6 +3,7 @@ import Avatar from './Avatar';
 import type { Profile } from '../lib/supabase';
 import { useEngineeringActivity, useActivityCalendar, usePeerProfile, usePeerPosts } from '../lib/hooks';
 import Activity from './Activity';
+import Achievements from './Achievements';
 import type { FeedPost } from './PostCard';
 import { formatRelativeTime } from '../lib/time';
 
@@ -430,6 +431,9 @@ export default function PeerProfileView({ peer, currentUser, onBack, onToggleCon
           ))}
         </div>
       </div>
+
+      {/* Achievements — unlocked purely by this peer's real activity thresholds */}
+      <Achievements activity={activity} postCount={myPosts.filter(p => !p.repostedBy).length} followerCount={connectionCount} />
 
       {/* Posts — this peer's real proof-of-work, compact cards */}
       <Activity
