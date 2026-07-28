@@ -84,6 +84,7 @@ export default function Sidebar({
         boxShadow: '0 10px 30px -5px rgba(0, 0, 0, 0.04), 0 8px 20px -6px rgba(0, 0, 0, 0.03), 0 0 0 1px rgba(0, 0, 0, 0.02)',
         display: 'flex',
         flexDirection: 'column',
+        minHeight: 'fit-content',
         transition: 'var(--transition)'
       }}>
         {/* Cover Photo Area with Bookmark overlay */}
@@ -114,7 +115,7 @@ export default function Sidebar({
         </div>
 
         {/* Content Area */}
-        <div style={{ padding: '30px 16px 16px 16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+         <div style={{ padding: '30px 16px 32px 16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
