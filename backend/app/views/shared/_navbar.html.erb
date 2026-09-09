@@ -1,0 +1,21 @@
+<nav class="navbar">
+  <%= link_to "Prodoya", root_path, class: "brand" %>
+  <div class="nav-links">
+    <%= link_to "Feed", root_path, class: active_tab?('feed', defined?(active_tab) ? active_tab : params[:controller]) %>
+    <%= link_to "Peers", peers_path, class: active_tab?('peers', defined?(active_tab) ? active_tab : params[:controller]) %>
+    <%= link_to "Leaderboard", leaderboard_path, class: active_tab?('leaderboard', defined?(active_tab) ? active_tab : params[:controller]) %>
+    <%= link_to "Chat", channels_path, class: active_tab?('channels', defined?(active_tab) ? active_tab : params[:controller]) %>
+  </div>
+  <div class="nav-user">
+    <span class="points-badge"><%= current_user.points %> pts</span>
+    <%= link_to notifications_path, class: "nav-notif" do %>
+      <%= current_user.notifications.unread.count %> notifications
+      <% if current_user.notifications.unread.exists? %>
+        <span class="dot"></span>
+      <% end %>
+    <% end %>
+    <%= link_to user_path(current_user), title: current_user.full_name do %>
+      <%= current_user.full_name %>
+    <% end %>
+  </div>
+</nav>

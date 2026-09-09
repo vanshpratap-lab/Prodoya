@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, type FormEvent } from 'react';
 import { Loader2, Plus, Search, MessageSquare, Send, Paperclip } from 'lucide-react';
-import { supabase, type Profile } from '../lib/supabase';
+import { api } from '../lib/api';
+import type { Profile } from '../lib/supabase';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -82,11 +83,8 @@ export default function AiChat({ currentUser, sidebarOpen }: AiChatProps) {
     setSending(true);
 
     try {
-      const { data, error: fnError } = await supabase.functions.invoke('ai-assistant', {
-        body: { messages: nextMessages },
-      });
-      if (fnError) throw fnError;
-      const reply = (data as { reply?: string })?.reply?.trim();
+      const { reply } = await api.post<{ reply: string }>('/ai_chat', { messages: nextMessages });
+      if (!reply) throw new Error('No reply');
       setConversations(prev =>
         prev.map(c => (c.id === cid ? { ...c, messages: [...nextMessages, { role: 'assistant', content: reply || 'I could not generate a response.' }] } : c)),
       );
@@ -102,7 +100,7 @@ export default function AiChat({ currentUser, sidebarOpen }: AiChatProps) {
       setError(
         err instanceof Error && err.message
           ? err.message
-          : 'The AI assistant is not available yet. Add your ANTHROPIC_API_KEY to the Supabase project secrets.',
+          : 'The AI assistant is not available yet. Set ANTHROPIC_API_KEY on the Rails server.',
       );
     } finally {
       setSending(false);

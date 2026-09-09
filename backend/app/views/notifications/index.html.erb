@@ -1,0 +1,20 @@
+<%= render "shared/navbar", active_tab: "notifications" %>
+<div class="container">
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+    <h2 style="margin:0;">Notifications</h2>
+    <% if @notifications.any? { |n| n.read_at.nil? } %>
+      <%= button_to "Mark all read", mark_all_read_notifications_path, method: :post, class: "btn btn-sm" %>
+    <% end %>
+  </div>
+
+  <% if @notifications.any? %>
+    <% @notifications.each do |n| %>
+      <div class="notif-item <%= "unread" if n.read_at.nil? %>">
+        <span><%= n.body %></span>
+        <span class="time"><%= time_ago_in_words(n.created_at) %> ago</span>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="empty">No notifications yet.</div>
+  <% end %>
+</div>

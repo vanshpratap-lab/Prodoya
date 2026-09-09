@@ -1,0 +1,30 @@
+<%= render "shared/navbar", active_tab: "channels" %>
+<div class="container">
+  <h2 style="margin-top: 0;">Community Chat</h2>
+
+  <div class="chat-layout">
+    <div class="channel-list">
+      <% @channels.each do |channel| %>
+        <%= link_to channel.name, channels_path(id: channel.id), class: ("active" if channel.id == @selected_channel.id) %>
+      <% end %>
+    </div>
+
+    <div class="chat-panel">
+      <div class="chat-header">
+        <%= @selected_channel.name %>
+        <span class="muted" style="font-weight:400;"> · <%= @selected_channel.description.presence || "Community channel" %></span>
+      </div>
+
+      <div class="messages" id="messages">
+        <% @messages.each do |message| %>
+          <%= render partial: "messages/message", locals: { message: message } %>
+        <% end %>
+      </div>
+
+      <%= form_with model: [@selected_channel, Message.new], class: "chat-input" do |f| %>
+        <%= f.text_field :body, placeholder: "Type a message...", autocomplete: "off" %>
+        <%= f.submit "Send", class: "btn btn-primary btn-sm" %>
+      <% end %>
+    </div>
+  </div>
+</div>

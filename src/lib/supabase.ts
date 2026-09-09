@@ -1,13 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY environment variables.');
-}
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const API_BASE = import.meta.env.VITE_API_BASE || '';
 
 export interface Profile {
   id: string;
@@ -84,4 +75,9 @@ export interface DbMessage {
   text: string;
   created_at: string;
   sender: Profile;
+}
+
+export interface AuthTokens {
+  token: string;
+  user: Profile;
 }

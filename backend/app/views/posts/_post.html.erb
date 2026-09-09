@@ -1,0 +1,58 @@
+<div class="post">
+  <div class="post-head">
+    <div class="avatar"><%= post.user.full_name[0].upcase %></div>
+    <div>
+      <div>
+        <%= link_to post.user.full_name, user_path(post.user), class: "post-author" %>
+        <span class="difficulty-badge difficulty-<%= post.difficulty %>"><%= post.difficulty %></span>
+      </div>
+      <div class="post-meta"><%= time_ago_in_words(post.created_at) %> ago · <%= link_to post.user.username, public_profile_path(post.user.username) %></div>
+    </div>
+  </div>
+
+  <div class="post-content"><%= simple_format(h(post.content)) %></div>
+
+  <% if post.github_url.present? %>
+    <div class="mt-2">
+      <%= link_to "GitHub →", post.github_url, target: "_blank", class: "action-btn", rel: "noopener" %>
+    </div>
+  <% end %>
+
+  <% if post.code_snippet.present? %>
+    <pre class="code-snippet"><%= h(post.code_snippet) %></pre>
+  <% end %>
+
+  <div class="post-footer">
+    <%= button_to "❤ Like (#{post_like_count(post)})", like_post_path(post), method: :post, class: "action-btn#{liked?(post) ? ' liked' : ''}", form_class: "inline" %>
+    <%= button_to "★ Repost (#{post_repost_count(post)})", repost_post_path(post), method: :post, class: "action-btn#{reposted?(post) ? ' reposted' : ''}", form_class: "inline" %>
+
+    <details>
+      <summary class="action-btn">💬 Comment (<%= post_comment_count(post) %>)</summary>
+      <div class="comments">
+        <% post.post_comments.includes(:user).each do |comment| %>
+          <div class="comment">
+            <div class="avatar"><%= comment.user.full_name[0].upcase %></div>
+            <div class="comment-body">
+              <strong><%= comment.user.full_name %></strong>
+              <div><%= h(comment.body) %></div>
+              <div class="muted"><%= time_ago_in_words(comment.created_at) %> ago</div>
+            </div>
+          </div>
+        <% end if post.post_comments.any? %>
+
+        <%= form_with url: post_comments_path(post), class: "comment-form" do |f| %>
+          <%= f.text_field :body, name: "comment[body]", placeholder: "Add a comment...", autocomplete: "off" %>
+          <%= f.submit "Send", class: "btn btn-primary btn-sm" %>
+        <% end %>
+      </div>
+    </details>
+  </div>
+
+  <div class="post-footer" style="border-top: 0; padding-top: 0;">
+    <% if post.user_id == current_user&.id %>
+      <%= button_to "Delete", post_path(post), method: :delete, class: "action-btn", data: { turbo_confirm: "Delete this post?" } %>
+    <% else %>
+      <%= button_to "Block user", block_post_path(post), method: :post, class: "action-btn", data: { turbo_confirm: "Block this user? Their posts will disappear." } %>
+    <% end %>
+  </div>
+</div>

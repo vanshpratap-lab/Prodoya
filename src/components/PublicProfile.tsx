@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Github, Heart, MessageCircle, Repeat2, Bot, GraduationCap, Activity, ExternalLink, Loader2 } from 'lucide-react';
-import { supabase, type Profile, type Post } from '../lib/supabase';
+import { api } from '../lib/api';
+import type { Profile, Post } from '../lib/supabase';
 import Avatar from './Avatar';
 import { formatRelativeTime } from '../lib/time';
 import { ImageGrid } from './PostCard';
@@ -20,63 +21,22 @@ export default function PublicProfile({ username }: PublicProfileProps) {
     let cancelled = false;
     (async () => {
       setLoading(true);
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('username', username)
-        .maybeSingle();
+      const { profile: profileData } = await api.get<{ profile: Profile }>(`/profiles/${username}`);
 
       if (!profileData) {
-        if (!cancelled) {
-          setNotFound(true);
-          setLoading(false);
-        }
+        if (!cancelled) { setNotFound(true); setLoading(false); }
         return;
       }
 
-      const { data: postsData } = await supabase
-        .from('posts')
-        .select('*')
-        .eq('author_id', profileData.id)
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      const postIds = (postsData || []).map(p => p.id);
-      const [{ data: likes }, { data: reposts }, { data: comments }] = postIds.length
-        ? await Promise.all([
-            supabase.from('post_likes').select('post_id').in('post_id', postIds),
-            supabase.from('post_reposts').select('post_id').in('post_id', postIds),
-            supabase.from('post_comments').select('post_id').in('post_id', postIds),
-          ])
-        : [{ data: [] }, { data: [] }, { data: [] }];
-
-      const countBy = (rows: { post_id: number }[] | null) => {
-        const map = new Map<number, number>();
-        (rows || []).forEach(r => map.set(r.post_id, (map.get(r.post_id) || 0) + 1));
-        return map;
-      };
-      const likeCounts = countBy(likes as any);
-      const repostCounts = countBy(reposts as any);
-      const commentCounts = countBy(comments as any);
+      const { posts: postsData } = await api.get<{ posts: Post[] }>(`/users/${profileData.id}/posts`);
 
       if (!cancelled) {
         setProfile(profileData as Profile);
-        setPosts(
-          (postsData || []).map(p => ({
-            ...p,
-            like_count: likeCounts.get(p.id) || 0,
-            has_liked: false,
-            repost_count: repostCounts.get(p.id) || 0,
-            has_reposted: false,
-            comment_count: commentCounts.get(p.id) || 0,
-          })) as Post[],
-        );
+        setPosts((postsData ?? []).map(p => ({ ...p, has_liked: false, has_reposted: false, has_saved: false })) as Post[]);
         setLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [username]);
 
   if (loading) {

@@ -1,0 +1,44 @@
+<%= render "shared/navbar", active_tab: "leaderboard" %>
+<div class="container">
+  <h2 style="margin-top: 0;">Engineering Leaderboard</h2>
+  <p class="muted">Top 50 engineers by proof-of-work points.</p>
+
+  <% my_rank = @users.index { |u| u.id == current_user.id } %>
+  <% if my_rank %>
+    <div class="stat" style="margin-bottom:20px;">
+      <div class="label">Your rank</div>
+      <div class="value">#<%= my_rank + 1 %></div>
+      <div class="label"><%= current_user.points %> pts — <%= "%0.1f" % (@users.first.points.zero? ? 0 : current_user.points.to_f * 100 / @users.first.points) %>% of #1</div>
+    </div>
+  <% end %>
+
+  <% if @users.any? %>
+    <table class="leaderboard">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Engineer</th>
+          <th>College</th>
+          <th>Role</th>
+          <th>Points</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @users.each_with_index do |user, i| %>
+          <tr class="<%= "you" if user.id == current_user.id %>">
+            <td><strong><%= i + 1 %></strong></td>
+            <td>
+              <%= link_to user.full_name, user_path(user) %>
+              <%= " (you)" if user.id == current_user.id %>
+            </td>
+            <td><%= user.college.presence || "—" %></td>
+            <td><%= user.role.presence || "Engineer" %></td>
+            <td><strong><%= user.points %></strong></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% else %>
+    <div class="empty">No engineers yet.</div>
+  <% end %>
+</div>
