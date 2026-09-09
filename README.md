@@ -17,7 +17,7 @@
 8. [Project Structure — Every File Explained](#project-structure--every-file-explained)
 9. [Pages / Views (Tab-Based Routing)](#pages--views-tab-based-routing)
 10. [Authentication Flow](#authentication-flow)
-11. [Real-Time Features](#real-time-features)
+11. [Refresh (Polling, No Websockets Yet)](#refresh-polling-no-websockets-yet)
 12. [Public Profiles (SEO-friendly)](#public-profiles-seo-friendly)
 13. [AI Chat Integration](#ai-chat-integration)
 14. [Design System & Styling](#design-system--styling)
@@ -32,7 +32,7 @@
 
 **Engineer Network** is a proof-of-work community platform designed specifically for engineering students. Unlike generic social media that rewards popularity, this platform rewards **actual engineering work** — posting a project, sharing a code snippet, linking a GitHub repo, contributing to open source, or logging a learning session.
 
-Every post is assigned a **difficulty level** (Beginner / Intermediate / Advanced) and **points** are automatically awarded. A server-side ranking algorithm orders the feed based on engagement, time decay, author reputation, and your personal network — all computed in Postgres so nothing can be gamed from the client.
+Every post is assigned a **difficulty level** (Beginner / Intermediate / Advanced) and **points** are automatically awarded. A server-side ranking algorithm orders the feed based on engagement, time decay, author reputation, and your personal network — all computed in the Rails API so nothing can be gamed from the client.
 
 The platform includes:
 - A **ranked social feed** with proof-of-work posts
@@ -41,7 +41,7 @@ The platform includes:
 - **Community chat channels** with real-time messaging
 - **Personal profiles** with a GitHub-style contribution calendar
 - **Public profile pages** accessible without login (SEO-ready)
-- An **AI assistant** powered by Supabase Edge Functions
+- An **AI assistant** proxied through the Rails API (`POST /api/v1/ai_chat`)
 - A **tools/workspace area** (Notion-style panel UI) for advanced productivity workflows
 
 ---
@@ -52,7 +52,7 @@ Traditional student social platforms (LinkedIn, Twitter) reward followers and lu
 
 > **How do you measure an engineering student's real output in a verifiable, community-reviewed way?**
 
-The answer: make every post a proof-of-work artifact. Attach difficulty grades. Let the algorithm surface harder, more engaged work. Let peers validate through likes, comments, and reposts. Cap self-gaming with server-side RLS and rate limits. The result is a trustworthy signal of who is actually doing the work.
+The answer: make every post a proof-of-work artifact. Attach difficulty grades. Let the algorithm surface harder, more engaged work. Let peers validate through likes, comments, and reposts. Cap self-gaming with server-side auth checks. The result is a trustworthy signal of who is actually doing the work.
 
 ---
 
@@ -60,25 +60,24 @@ The answer: make every post a proof-of-work artifact. Attach difficulty grades. 
 
 | Feature | Status | Notes |
 |---|---|---|
-| Email/password auth | ? | Multi-step signup flow with college picker |
-| Google OAuth | ? | One-click social login |
-| GitHub OAuth | ? | One-click social login |
-| Post creation | ? | Text + difficulty + category + image/video |
-| Ranked feed | ? | Server-side algorithm via Postgres RPC |
-| Likes / Reposts / Comments | ? | Optimistic UI + DB triggers |
-| Blocking | ? | Removed from feed + block penalty to author |
-| Leaderboard | ? | Top 50 ranked by engineering metrics |
-| Peer discovery | ? | Algorithmic suggestions (mutual ? college ? reputation) |
-| Peer profiles (in-app) | ? | Full profile view for any peer |
-| Public profiles (/u/username) | ? | No login required, SEO-ready |
-| Community chat | ? | Multi-channel, real-time via Supabase Realtime |
-| Notifications | ? | Real-time push + audio chime |
-| AI assistant | ? | Conversation history, new chat, search |
-| Contribution calendar | ? | GitHub-style 371-day grid from real post data |
-| Engineering activity metrics | ? | Active days, projects built, contributions |
-| Sidebar (collapsible) | ? | Profile card + proof-of-work score |
-| Audio feedback | ? | Web Audio API chime on connections/notifications |
-| Vercel deployment | ? | SPA rewrites configured |
+| Email/password auth | Yes | Multi-step signup flow with username + college picker, JWT in localStorage |
+| Google OAuth | No | Buttons present but disabled — no OAuth provider wired up yet |
+| GitHub OAuth | No | Buttons present but disabled — no OAuth provider wired up yet |
+| Post creation | Yes | Text + difficulty + category + image/video |
+| Ranked feed | Yes | Server-side algorithm in the Rails API |
+| Likes / Reposts / Comments | Yes | Optimistic UI + server-side toggles |
+| Blocking | Yes | Removed from feed |
+| Leaderboard | Yes | Top 50 ranked by engineering metrics |
+| Peer discovery | Yes | Algorithmic suggestions (mutual + college + reputation) |
+| Peer profiles (in-app) | Yes | Full profile view for any peer |
+| Public profiles (/u/username) | Yes | No login required, SEO-ready |
+| Community chat | Yes | Multi-channel, polling refresh (10s) |
+| Notifications | Yes | Polling refresh (15s) + audio chime |
+| AI assistant | Yes | Conversation history, new chat, search (needs `ANTHROPIC_API_KEY` on server) |
+| Contribution calendar | Yes | GitHub-style 371-day grid from real post data |
+| Engineering activity metrics | Yes | Active days, projects built, contributions |
+| Sidebar (collapsible) | Yes | Profile card + proof-of-work score |
+| Audio feedback | Yes | Web Audio API chime on connections/notifications |
 
 ---
 
@@ -92,24 +91,24 @@ The answer: make every post a proof-of-work artifact. Attach difficulty grades. 
 | **Styling** | Vanilla CSS (custom design system in index.css) |
 | **Icons** | Lucide React |
 | **Fonts** | Google Fonts — Inter, Italiana, Italianno |
-| **Backend / DB** | Supabase (PostgreSQL + Row Level Security) |
-| **Auth** | Supabase Auth (email, Google, GitHub OAuth) |
-| **Realtime** | Supabase Realtime (Postgres Changes) |
-| **Storage** | Supabase Storage (post-media bucket) |
-| **Edge Functions** | Supabase Edge Functions (AI chat proxy) |
+| **Backend / DB** | Ruby on Rails 8.1 API + SQLite (`backend/`) |
+| **Auth** | Email/password with Devise + devise-jwt (30-day tokens in localStorage) |
+| **Refresh** | Polling (chat 10s, notifications 15s) — no websockets yet |
+| **Storage** | Rails ActiveStorage, local disk (`backend/storage/`) |
+| **AI Chat** | Rails proxy to Anthropic API (`POST /api/v1/ai_chat`) |
 | **Linting** | OxLint |
-| **Deployment** | Vercel (SPA mode via vercel.json) |
+| **Deployment** | Static SPA (`dist/`) + separately hosted Rails API |
 
 ---
 
 ## Architecture Overview
 
 ```
-Browser (React SPA)
+Browser (React SPA, http://localhost:5173)
     |
     +-- main.tsx --------------- Entry point: /u/:username -> PublicProfile, else App
     |
-    +-- AuthProvider (Context) -- Wraps entire app, holds session/user/profile
+    +-- AuthProvider (Context) -- Wraps entire app, holds token/profile
     |
     +-- App.tsx ---------------- Root layout: TopBar + Sidebar + Content Area
             |
@@ -126,53 +125,61 @@ Browser (React SPA)
                     +-- notifications ? Notifications
                     +-- ai           ? AiChat (full screen, no sidebar)
 
-Supabase (Cloud Backend)
-    +-- PostgreSQL database
-    |       profiles, posts, connections, messages, chats,
+    |  All data goes through src/lib/api.ts (typed fetch client,
+    |  JWT from localStorage). In dev, Vite proxies /api/* to Rails.
+    v
+Rails JSON API (http://localhost:3000, backend/)
+    +-- SQLite database (backend/storage/development.sqlite3)
+    |       users, posts, connections, messages, channels,
     |       notifications, post_likes, post_reposts, post_comments, user_blocks
-    +-- RLS policies (every table locked to auth.uid())
-    +-- DB triggers (reputation points on like/comment/repost)
-    +-- RPCs (get_feed_ranking, get_peer_suggestions, get_engineering_activity,
-    |       get_engineering_rankings, get_activity_calendar, toggle_post_like,
-    |       toggle_post_repost, award_post_points, send_connection_request)
-    +-- Realtime subscriptions (messages, notifications)
-    +-- Storage (post-media bucket for images/videos)
+    +-- Devise + devise-jwt auth (POST /api/v1/auth/sign_in|up, DELETE .../sign_out)
+    +-- REST endpoints under /api/v1 (posts, profiles, peers, leaderboard,
+    |       chat, notifications, search, reports, uploads, ai_chat)
+    +-- Server-side feed ranking (engagement x decay x difficulty)
+    +-- ActiveStorage uploads on local disk
 ```
 
 ---
 
 ## Database Schema & Backend
 
-All data lives in Supabase PostgreSQL. The client never does raw SQL — it goes through Supabase RPCs (stored procedures) or direct table access protected by Row Level Security (RLS).
+All data lives in SQLite, accessed only through the Rails JSON API (`backend/`). The client never does raw SQL — it calls typed REST endpoints under `/api/v1` with a JWT bearer token.
 
 ### Tables
 
 | Table | Purpose |
 |---|---|
-| `profiles` | One row per user: id, username, full_name, college, role, avatar_url, bio, github_url, linkedin_url, twitter_url, tech_stack (JSON), points, last_post_at, created_at |
-| `posts` | Proof-of-work posts: id, author_id, content, tags[], ai_difficulty, ai_points, code_snippet, github_url, project_showcase_url, video_url, created_at |
-| `post_likes` | Many-to-many: post_id + user_id. RLS: one row per user per post. |
+| `users` | One row per user: id, email, username, full_name, college, role, avatar_url, cover_url, bio, github_url, linkedin_url, twitter_url, tech_stack (JSON), points, last_post_at, jti, created_at |
+| `posts` | Proof-of-work posts: id, user_id, content, tags[], difficulty, points, code_snippet, github_url, image_urls[], video_url, created_at |
+| `post_likes` | Many-to-many: post_id + user_id (one row per user per post) |
 | `post_reposts` | Same structure as likes but tracks reposts and timestamp |
-| `post_comments` | post_id, author_id, text, created_at, joined with profiles |
+| `post_comments` | post_id, user_id, body, created_at, joined with users |
 | `connections` | Peer connections: requester_id, addressee_id (bidirectional lookup) |
-| `chats` | Community channels: id, name, emoji, description |
-| `messages` | Channel messages: chat_id, sender_id, text, created_at, joined with profiles |
-| `notifications` | Per-user: user_id, icon, text, created_at. Max 50 fetched. |
+| `channels` | Community channels + 1-on-1 DMs: id, name, emoji, description, participant_1/2 (null = public) |
+| `messages` | Channel messages: channel_id, user_id, body, created_at, joined with users |
+| `notifications` | Per-user: user_id, icon, body, category, actor_id, read_at, created_at |
 | `user_blocks` | blocker_id, blocked_id. Blocked users are invisible everywhere. |
 
-### Key Stored Procedures (RPCs)
+### Key API Endpoints (`backend/app/controllers/api/v1/`)
 
-| RPC | What It Does |
+| Endpoint | What It Does |
 |---|---|
-| `get_feed_ranking()` | Returns post_id + score for the calling user's personalized feed. Factors: engagement, time decay, difficulty, author quality, affinity, discovery boost, block penalty. |
-| `get_peer_suggestions()` | Returns peer_id + score for peer discovery. Factors: mutual connections, same college, reputation, new member. |
-| `get_engineering_activity(p_user_id)` | Returns a row of 8 engineering metrics computed from real activity data. |
-| `get_engineering_rankings()` | Returns composite rank scores for all users (used in leaderboard). |
-| `get_activity_calendar(p_user_id, p_days)` | Returns activity_date + post_count for the contribution calendar grid. |
-| `toggle_post_like(p_post_id)` | Upserts/deletes post_likes row and fires reputation trigger. |
-| `toggle_post_repost(p_post_id)` | Upserts/deletes post_reposts row and fires reputation trigger. |
-| `award_post_points(p_points)` | Adds points to the calling user's profile (called after post creation). |
-| `send_connection_request(p_addressee_id)` | Inserts into connections AND creates a notification for the recipient. |
+| `POST /api/v1/auth/sign_up` | Creates user (+ auto-generates username if blank), returns JWT + profile |
+| `POST /api/v1/auth/sign_in` | Email/password login, returns JWT + profile |
+| `DELETE /api/v1/auth/sign_out` | Revokes the JWT (jti rotation) |
+| `GET /api/v1/posts` | Ranked feed: `{ posts, reposts, ranks }` with like/repost/comment counts |
+| `POST /api/v1/posts` | Creates a post, awards difficulty points (10/20/35) |
+| `POST /api/v1/posts/:id/{like,repost,save}` | Toggles engagement |
+| `GET+POST /api/v1/posts/:post_id/comments` | Lists / adds comments (notifies the author) |
+| `GET /api/v1/peers` | All profiles + `{ peer_id: score }` suggestions + `connected_ids` |
+| `POST /api/v1/users/:id/connect` | Toggles a connection (notifies the peer on connect) |
+| `GET /api/v1/leaderboard` | Top 50 rows with composite rank scores |
+| `GET /api/v1/users/:id/{activity,calendar}` | 8 engineering metrics + 371-day contribution grid |
+| `GET /api/v1/chat`, `POST /api/v1/chat/messages`, `POST /api/v1/chat/direct` | Channels + messages, send, open-or-create DM (connected peers only) |
+| `GET/POST /api/v1/notifications` (+ `mark_read`, `read_all`) | Lists / creates / reads / deletes notifications |
+| `POST /api/v1/uploads` | ActiveStorage upload, returns `{ url }` |
+| `POST /api/v1/ai_chat` | `{ messages }` → Anthropic proxy, returns `{ reply }` |
+| `GET /api/v1/profiles/:username` | Public profile lookup (no post data needed for auth) |
 
 ---
 
@@ -180,59 +187,51 @@ All data lives in Supabase PostgreSQL. The client never does raw SQL — it goes
 
 > See [ALGORITHM.md](./ALGORITHM.md) for the full mathematical breakdown.
 
-The ranking system runs 100% in Postgres — the browser cannot manipulate scores.
+The ranking system runs 100% in the Rails API — the browser cannot manipulate scores.
 
-### Feed Ranking (get_feed_ranking)
+### Feed Ranking (`PostsController#build_ranks`)
 
-Each post's score is a **product of seven multiplied factors**:
+Each post's score combines engagement, freshness, and difficulty:
 
 | Factor | Formula | Rationale |
 |---|---|---|
 | Engagement | `1 + likes×1 + comments×3 + reposts×5` | Comments beat likes; reposts signal real value |
-| Time decay | `1 / (age_hours + 2)^1.5` | Hacker News-style power-law — fresh wins unless engagement is real |
+| Time decay | `1 / (age_days + 2)` | Fresh wins unless engagement is real |
 | Difficulty | `beginner×1.0 · intermediate×1.15 · advanced×1.3` | Harder posts rank higher |
-| Author quality | `1 + min(points, 2000)/4000` (max ×1.5) | Reputation amplifies reach, but capped |
-| Affinity | ×1.5 if connected to author | Personalised to your network |
-| Discovery boost | ×1.2 if author joined < 7 days ago | Cold-start problem solved |
-| Block penalty | `1 / (1 + blocks_against_author × 0.5)` | Community-downvotes lose reach |
 
-### Reputation Points (DB Triggers)
+### Reputation Points
 
-- Like received ? +2 pts
-- Comment received ? +3 pts
-- Repost received ? +5 pts
-- Post created ? +10 / +20 / +35 pts (by difficulty)
-- Undo actions subtract the same. Self-engagement earns nothing. Floor at 0.
+- Post created → +10 / +20 / +35 pts (by difficulty), added to the author's `users.points`
+- Leaderboard score = points + activity metrics (active days, projects, open source, community, AI impact)
 
-### Peer Discovery (get_peer_suggestions)
+### Peer Discovery (`PeersController#index`)
 
 ```
-score = mutual_connections×3 + same_college×2 + min(points,2000)/1000 + new_member×1
+score = mutual_connections×2 + same_college×1 + points/100
 ```
 
 ### Anti-Spam
 
-- Max 5 posts per rolling hour (DB trigger — cannot be bypassed client-side)
-- All writes go through RLS — auth.uid() must match the author
+- All writes require a valid JWT for the acting user — `current_user` must match the author
+- Blocked users are excluded from feeds, DMs require an existing connection
 
 ---
 
 ## Project Structure — Every File Explained
 
 ```
-polywork-main/
+Engineer-Network/ (repo root)
 +-- index.html                   HTML shell, Google Fonts, viewport meta
-+-- vite.config.ts               Vite config (React plugin only)
++-- vite.config.ts               Vite config (React plugin + /api proxy to Rails :3000)
 +-- tsconfig.json                Root TS config (references app + node)
 +-- tsconfig.app.json            App TS config (ES2023, jsx, strict linting)
 +-- tsconfig.node.json           Node TS config (vite config files)
-+-- package.json                 npm scripts + dependencies
-+-- .env.example                 Template: VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY
-+-- .env.local                   Local secrets (git-ignored)
-+-- .gitignore                   Ignores node_modules, dist, .env.local, etc.
++-- package.json                 npm scripts + dependencies (no backend SDK)
++-- .env.example                 Notes: no frontend env vars needed; backend keys below
++-- .gitignore                   Ignores node_modules, dist, .env, etc.
 +-- .oxlintrc.json               OxLint rules configuration
 +-- vercel.json                  SPA rewrite: all paths ? index.html
-+-- ALGORITHM.md                 Full documentation of the ranking algorithm
++-- ALGORITHM.md                 Full documentation of the ranking/trust system
 +-- README.md                    This file
 ¦
 +-- public/                      Static assets served at root
@@ -244,6 +243,17 @@ polywork-main/
 ¦       +-- taste-skill/         Design taste & aesthetic guidelines
 ¦       +-- hallmark/            Brand hallmark guidelines
 ¦
++-- backend/                     Ruby on Rails 8.1 JSON API (see backend/README.md)
+¦   +-- app/controllers/api/v1/  All endpoints (sessions, registrations, posts,
+¦   ¦                            profiles, peers, leaderboard, chat, notifications,
+¦   ¦                            search, reports, uploads, ai_chat)
+¦   +-- app/models/              User (Devise + JWT), Post, Channel, Message,
+¦   ¦                            Notification, Connection, UserBlock, ...
+¦   +-- app/lib/api_serializer.rb Shapes the exact JSON the React app consumes
+¦   +-- config/routes.rb         All /api/v1 routes
+¦   +-- db/                      Migrations + seeds (demo users, channels)
+¦   +-- storage/                 SQLite DB + ActiveStorage uploads (git-ignored)
+¦
 +-- src/                         All application source code
     +-- main.tsx                 Entry point — route split public vs. app
     +-- App.tsx                  Root layout + state orchestration
@@ -254,9 +264,10 @@ polywork-main/
     ¦   +-- react.svg            React logo (scaffold leftover)
     ¦   +-- vite.svg             Vite logo (scaffold leftover)
     +-- lib/                     Core logic, types, utilities
-    ¦   +-- supabase.ts          Supabase client + all TypeScript interfaces
-    ¦   +-- AuthContext.tsx      React context for auth state + profile
-    ¦   +-- hooks.ts             All data-fetching custom hooks (622 lines)
+    ¦   +-- api.ts               Typed fetch client (JWT header, 401 handling) + authApi
+    ¦   +-- supabase.ts          TypeScript interfaces only (legacy name, no client)
+    ¦   +-- AuthContext.tsx      React context for auth state + profile (localStorage JWT)
+    ¦   +-- hooks.ts             All data-fetching custom hooks
     ¦   +-- time.ts              Time formatting utilities
     ¦   +-- sound.ts             Web Audio API notification chime
     +-- components/              All UI components
@@ -283,17 +294,17 @@ polywork-main/
 
 **`index.html`** — The single HTML page Vite serves. Sets the page title, loads Google Fonts (Inter, Italiana, Italianno), and mounts the React app at `<div id="root">`. All navigation is client-side.
 
-**`vite.config.ts`** — Minimal Vite config using only `@vitejs/plugin-react` for JSX transform and Fast Refresh.
+**`vite.config.ts`** — React plugin for JSX transform and Fast Refresh, plus a dev-server proxy: `/api/*` → `http://localhost:3000` (the Rails API).
 
 **`tsconfig.app.json`** — TypeScript config for application source: target ES2023, DOM library, ESNext modules with bundler resolution, strict unused-locals/parameters checks, JSX via react-jsx.
 
-**`package.json`** — Four scripts: `dev` (Vite dev server), `build` (tsc + Vite bundle), `lint` (OxLint), `preview` (serve dist). Runtime deps: supabase-js, lucide-react, react, react-dom. Dev deps: vite, typescript, @types/\*, oxlint.
+**`package.json`** — Four scripts: `dev` (Vite dev server), `build` (tsc + Vite bundle), `lint` (OxLint), `preview` (serve dist). Runtime deps: lucide-react, react, react-dom. Dev deps: vite, typescript, @types/*, oxlint.
 
 **`vercel.json`** — Rewrites every URL path to `/index.html`. Required for client-side routing to work on Vercel (direct URL access would 404 without this).
 
 **`ALGORITHM.md`** — Human-readable docs of the entire ranking/trust system. All 7 feed-ranking factors, reputation triggers, peer discovery scoring, and anti-spam rules.
 
-**`.env.example`** — Template showing the two required env vars: `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+**`.env.example`** — Notes on setup: the frontend needs no env vars (API base is `/api/v1`, proxied in dev); backend secrets (`DEVISE_JWT_SECRET`, `ANTHROPIC_API_KEY`) are documented there.
 
 ---
 
@@ -301,7 +312,7 @@ polywork-main/
 
 **`src/main.tsx`** — Entry point. Checks if the URL matches `/u/:username`. If yes, renders `<PublicProfile username="...">` directly (no auth). For all other URLs, wraps `<App />` in `<AuthProvider>`. This split enables SEO-crawlable public profile pages.
 
-**`src/App.tsx`** — Root layout and state orchestration (260 lines). Manages: `activeTab`, `sidebarOpen`, `searchQuery`, `feedFilter`, `selectedChatId`, `typeMessage`. Invokes all top-level data hooks. Shows spinner on auth loading, shows Auth screen if no session. Transforms raw Supabase data into typed view models. Defines all event handlers and passes them as props. Renders: `TopBar ? main-wrapper ? Sidebar + content-area`.
+**`src/App.tsx`** — Root layout and state orchestration. Manages: `activeTab`, `sidebarOpen`, `searchQuery`, `feedFilter`, `selectedChatId`, `typeMessage`. Invokes all top-level data hooks. Shows spinner on auth loading, shows Auth screen if no token/profile. Transforms API posts into typed view models. Defines all event handlers and passes them as props. Renders: `TopBar → main-wrapper → Sidebar + content-area`.
 
 **`src/index.css`** — Global design system (~1,200 lines). Contains all CSS custom properties (design tokens), layout classes, all component styles, and animation keyframes. Nothing is hardcoded in component files — all colors/fonts reference tokens.
 
@@ -309,22 +320,24 @@ polywork-main/
 
 ### `src/lib/` — Core Logic & Data Layer
 
-**`supabase.ts`** — Creates the singleton Supabase client from env vars. Throws at startup if vars are missing. Exports all TypeScript interfaces: `Profile`, `EngineeringActivity`, `Post`, `PostComment`, `ChatChannel`, `DbMessage`.
+**`api.ts`** — Typed fetch client for the Rails API. Base path `/api/v1`, JWT from `localStorage` (`auth_token`) sent as bearer header, 401 handling (single reload only when a stale token existed), `FormData` upload helper. Exports `api` (`get/post/put/patch/delete/postForm`) and `authApi` (`signIn/signUp/signOut/me`).
 
-**`AuthContext.tsx`** — React Context managing global auth state. On mount: restores session via `getSession()`, fetches profile, subscribes to `onAuthStateChange`. Exports `AuthProvider` and `useAuth()` hook returning `{ session, user, profile, loading, refreshProfile, signOut }`.
+**`supabase.ts`** — TypeScript interfaces only (`Profile`, `EngineeringActivity`, `Post`, `PostComment`, `ChatChannel`, `DbMessage`, `AuthTokens`). Legacy filename; there is no Supabase client anymore.
 
-**`hooks.ts`** (622 lines) — The entire data layer. Seven custom hooks:
+**`AuthContext.tsx`** — React Context managing global auth state. On mount: reads JWT from `localStorage`, fetches profile via `GET /api/v1/users/me`. Exports `AuthProvider` and `useAuth()` hook returning `{ token, profile, loading, refreshProfile, signOut }`.
 
-- **`usePosts(userId)`** — Loads 100 posts, parallel-fetches likes/reposts/comments, calls `get_feed_ranking()`, merges original posts + reposts into a ranked `feedItems[]`. Mutations: `createPost`, `toggleLike`, `toggleRepost`, `incrementCommentCount`, `deletePost`, `blockUser`.
-- **`usePostComments(postId, enabled)`** — Lazy-loaded comments for a post. `addComment()` inserts and re-fetches.
-- **`useEngineeringActivity(userId)`** — Calls `get_engineering_activity` RPC. Returns 8 real engineering metrics.
-- **`useActivityCalendar(userId)`** — Calls `get_activity_calendar` RPC. Returns `Map<date, post_count>` for 371 days.
-- **`useConnections(userId)`** — Loads all profiles + connections + `get_peer_suggestions()`. Outputs sorted `PeerCard[]`. `toggleConnect()` calls `send_connection_request` RPC or deletes the connection row.
-- **`useCommunityChat(userId)`** — Loads channels + 500 messages. Subscribes to Realtime INSERT on messages table. `sendMessage()` inserts into messages.
-- **`useNotifications(userId)`** — Loads 50 notifications. Subscribes to Realtime INSERT filtered to current user. New notifications trigger `playNotificationChime()`.
-- **`useLeaderboard()`** — Loads profiles + `get_engineering_rankings()` RPC. Merges, sorts by rank_score, slices top 50.
+**`hooks.ts`** — The entire data layer, calling the Rails endpoints above. Custom hooks:
 
-Also exports standalone `uploadPostMedia(userId, file)` — uploads to Supabase Storage `post-media` bucket, returns public CDN URL.
+- **`usePosts(userId)`** — Loads the ranked feed (`GET /api/v1/posts` returns `{ posts, reposts, ranks }`), merges original posts + repost activity into ranked `feedItems[]`. Mutations: `createPost`, `toggleLike`, `toggleRepost`, `toggleSave`, `incrementCommentCount`, `deletePost`, `blockUser`.
+- **`usePostComments(postId, enabled)`** — Lazy-loaded comments (`GET /api/v1/posts/:id/comments`). `addComment()` posts and re-fetches.
+- **`useEngineeringActivity(userId)`** — `GET /api/v1/users/:id/activity`. Returns 8 real engineering metrics.
+- **`useActivityCalendar(userId)`** — `GET /api/v1/users/:id/calendar`. Returns `Map<date, post_count>` for 371 days.
+- **`useConnections(userId)`** — `GET /api/v1/peers` (profiles + suggestion scores + connected ids). Outputs sorted `PeerCard[]`. `toggleConnect()` hits `POST /api/v1/users/:id/connect`.
+- **`useCommunityChat(userId)`** — `GET /api/v1/chat` (channels + messages), 10s polling refresh. `sendMessage()` posts to `/api/v1/chat/messages`; `startDirectChat()` opens/creates a DM via `/api/v1/chat/direct`.
+- **`useNotifications(userId)`** — `GET /api/v1/notifications`, 15s polling refresh. New unread items trigger `playNotificationChime()`. `markRead` / `markAllRead` / `deleteNotification` included.
+- **`useLeaderboard()`** — `GET /api/v1/leaderboard`. Sorts by rank_score, slices top 50.
+
+Also exports standalone helpers: `uploadPostMedia` / `updateProfileCover` / `updateProfileAvatar` (via `POST /api/v1/uploads`), `updateProfileDetails` (via `PATCH /api/v1/users/me`), `searchEverything` (via `GET /api/v1/search`), `submitContentReport` (via `POST /api/v1/reports`).
 
 **`time.ts`** — Two pure functions: `formatRelativeTime(iso)` (humanised: "Just now", "5 mins ago", etc.) and `formatClockTime(iso)` (HH:MM AM/PM).
 
@@ -354,15 +367,15 @@ Also exports standalone `uploadPostMedia(userId, file)` — uploads to Supabase 
 
 **`Chat.tsx`** (314 lines) — Community chat. Two-column layout: channel list (left) + message thread (right). Auto-scroll to newest message. Scroll-to-bottom floating button. Incoming/outgoing message bubbles. Message input with send button.
 
-**`AiChat.tsx`** (408 lines) — AI assistant. Conversation history in localStorage. Left panel: conversation list with search + "New chat". Right panel: message history (user right / assistant left) with "Thinking..." indicator. Welcome screen with 4 platform-specific suggestion chips when no conversation is active. Calls Supabase Edge Function `ai-chat` with full conversation history.
+**`AiChat.tsx`** (408 lines) — AI assistant. Conversation history in localStorage. Left panel: conversation list with search + "New chat". Right panel: message history (user right / assistant left) with "Thinking..." indicator. Sends full conversation history to `POST /api/v1/ai_chat`.
 
 **`Notifications.tsx`** (87 lines) — Notification list. Maps emoji icons to Lucide icons. Empty state with centered bell illustration. Each item: icon badge + text + relative time.
 
 **`ProfileView.tsx`** (621 lines) — Own profile page. Header: avatar, name, username, role, college, bio, social links. Share profile link button. Stats row. Tech stack bars. Engineering metrics. Year selector + GitHub contribution calendar grid (built from `useActivityCalendar` data). Trust badges. Compact activity section with "View all" link.
 
-**`PublicProfile.tsx`** (215 lines) — Public read-only profile at `/u/:username`. No auth required. Fetches profile by username field, then posts with engagement counts. Shows avatar, bio, links, and post timeline. Not-found state if username doesn't exist.
+**`PublicProfile.tsx`** (215 lines) — Public read-only profile at `/u/:username`. No auth required. Fetches via `GET /api/v1/profiles/:username` and `/api/v1/users/:id/posts`. Shows avatar, bio, links, and post timeline. Not-found state if username doesn't exist.
 
-**`Auth.tsx`** (467 lines) — Multi-step auth UI. Login mode: email ? password (2 steps). Signup mode: email ? password ? confirm (3 steps) with full name + college picker. Real-time validation. Password visibility toggles. Google + GitHub OAuth buttons (inline SVG icons). Inline error/info messages. Smooth step transitions.
+**`Auth.tsx`** (467 lines) — Multi-step auth UI. Login mode: email → password (2 steps). Signup mode: full name + username + college + email → password → confirm (3 steps) with real-time validation. Password visibility toggles. Google + GitHub OAuth buttons are present but disabled (no provider wired up yet). Inline error/info messages. Smooth step transitions.
 
 ---
 
@@ -388,30 +401,30 @@ The app uses no router library. Navigation is managed by `activeTab` state in `A
 ```
 App loads
     |
-    +-- authLoading=true ? show spinner
+    +-- authLoading=true → show spinner
     |
-    +-- supabase.auth.getSession() resolves
-    |   +-- No session  ?  render Auth component
-    |   +-- Session     ?  fetch profile  ?  render main app
+    +-- Read JWT from localStorage (auth_token)
+    |   +-- No token  →  render Auth component
+    |   +-- Token     →  GET /api/v1/users/me  →  render main app
     |
-    +-- onAuthStateChange subscription (active for app lifetime)
-        +-- LOGIN  ?  fetch profile, set session
-        +-- LOGOUT ?  clear session + profile  ?  render Auth component
+    +-- Login/signup success  →  store token, reload  →  main app
+    +-- Logout  →  DELETE /api/v1/auth/sign_out (revokes JWT),
+                    clear token + profile  →  render Auth component
+    +-- Any API call returns 401 with a stale token  →  single reload to Auth
 ```
 
-Profile creation is handled server-side (Supabase trigger on `auth.users` INSERT creates a `profiles` row). The client only reads and updates profiles.
+Signup (`POST /api/v1/auth/sign_up`) takes email + password + full_name + college + username; a blank username is auto-generated server-side from the email. Tokens are JWTs valid for 30 days (`devise-jwt`, jti rotation on sign-out).
 
 ---
 
-## Real-Time Features
+## Refresh (Polling, No Websockets Yet)
 
-Two Supabase Realtime subscriptions are active at all times when logged in:
+Two polling loops run while logged in (no realtime subscriptions yet):
 
-1. **`messages-all` channel** — `INSERT` on `messages` table ? triggers `fetchAll()` in `useCommunityChat`. All chat channels update instantly for all connected users.
+1. **Chat** — `useCommunityChat` re-fetches `GET /api/v1/chat` every 10s, so new messages appear for all viewers.
+2. **Notifications** — `useNotifications` re-fetches `GET /api/v1/notifications` every 15s; newly arrived unread items play the audio chime.
 
-2. **`notifications-{userId}` channel** — `INSERT` on `notifications` filtered to `user_id=currentUserId` ? appends to notifications list + plays audio chime. Connection request notifications arrive instantly for the recipient.
-
-Both subscriptions are cleaned up when their respective hook unmounts (`supabase.removeChannel(channel)` in useEffect cleanup).
+Both intervals are cleaned up when their hook unmounts or the user logs out (fetches no-op without a token).
 
 ---
 
@@ -420,26 +433,25 @@ Both subscriptions are cleaned up when their respective hook unmounts (`supabase
 URL pattern: `/u/:username`
 
 - Handled in `main.tsx` before `AuthProvider` mounts
-- `PublicProfile` fetches directly from Supabase with anon key
-- No session, cookie, or localStorage required
+- `PublicProfile` fetches via the Rails API (`GET /api/v1/profiles/:username`), same origin through the Vite `/api` proxy in dev
+- No token or localStorage required
 - Displays: avatar, name, role, college, bio, social links, all posts with engagement counts
-- Vercel rewrite in `vercel.json` ensures this path serves `index.html`
+- `vercel.json` rewrite ensures this path serves `index.html` on static hosts
 
 ---
 
 ## AI Chat Integration
 
-`AiChat.tsx` communicates with a Supabase Edge Function at `${VITE_SUPABASE_URL}/functions/v1/ai-chat`.
+`AiChat.tsx` sends the conversation to the Rails API:
 
-Request body:
 ```json
-{
-  "messages": [{ "role": "user", "content": "..." }],
-  "context": "Platform context string with current user info"
-}
+POST /api/v1/ai_chat
+{ "messages": [{ "role": "user", "content": "..." }] }
 ```
 
-Conversations persist to `localStorage` under key `ai-convos-{userId}`. Device-local only (not synced to DB). Suggestion chips provide platform-specific starting prompts the Edge Function can answer using community data.
+The controller proxies to the Anthropic Messages API and returns `{ "reply": "..." }`. Requires `ANTHROPIC_API_KEY` in the Rails environment (otherwise the endpoint returns 503).
+
+Conversations persist to `localStorage` under key `ai-convos-{userId}`. Device-local only (not synced to DB).
 
 ---
 
@@ -469,55 +481,83 @@ All styles live in `src/index.css`. CSS custom properties throughout — no hard
 
 ## Environment Variables
 
+The frontend needs **no** env vars (API base is `/api/v1`, proxied to Rails by Vite in dev). Backend secrets live in `backend/` and are never committed:
+
 | Variable | Required | Description |
 |---|---|---|
-| `VITE_SUPABASE_URL` | Yes | Supabase project URL (e.g. https://xyz.supabase.co) |
-| `VITE_SUPABASE_ANON_KEY` | Yes | Supabase public anon key (safe to include in browser JS) |
-
-Read by `src/lib/supabase.ts` via `import.meta.env`. Vite statically replaces them at build time.
+| `DEVISE_JWT_SECRET` | No | JWT signing secret. Falls back to Rails `secret_key_base`. Set it in production. |
+| `ANTHROPIC_API_KEY` | For AI chat | Anthropic API key used by `POST /api/v1/ai_chat`. Without it the endpoint returns 503. |
+| `SECRET_KEY_BASE` | Production | Rails secret. In dev it comes from `backend/config/credentials.yml.enc` + local `master.key` (git-ignored, never commit it). |
 
 ---
 
 ## Local Development
 
+Two servers run together: **Rails API on `:3000`** + **Vite frontend on `:5173`** (proxies `/api/*` to Rails).
+
+### Prerequisites
+
+- **Ruby 3.4.10** (see `backend/.ruby-version` — via mise/rbenv/rvm) + `bundler`
+- **Node ≥ 20** + npm
+
+### Steps (clone → open in browser)
+
 ```bash
-# 1. Clone and install
+# 1. Clone and enter the repo
 git clone <repo-url>
-cd polywork-main
+cd Prodoya
+
+# 2. Backend: install gems, create + seed the database
+cd backend
+bundle install
+bin/rails db:prepare   # runs migrations + seeds demo users and channels
+
+# 3. Start the Rails API (keep this terminal running)
+bin/rails server -p 3000
+# → http://localhost:3000  (API only; opening it directly shows 401 JSON, that's normal)
+
+# 4. In a NEW terminal: install + start the frontend
+cd Prodoya
 npm install
-
-# 2. Configure environment
-cp .env.example .env.local
-# Edit .env.local and add your Supabase URL + anon key
-
-# 3. Start dev server
 npm run dev
-# ? http://localhost:5173
-
-# 4. Optional: Type-check
-npx tsc --noEmit
-
-# 5. Optional: Lint
-npm run lint
+# → http://localhost:5173
 ```
 
-**Supabase setup required:**
-- Create a Supabase project at supabase.com
-- Run the database migrations (tables, RLS policies, triggers, RPCs)
-- Enable Google and/or GitHub OAuth providers in Auth dashboard
-- Create a `post-media` storage bucket (public read, authenticated write)
-- Deploy the `ai-chat` Edge Function
+### Open the app
+
+1. Go to **http://localhost:5173** — the login screen appears (no flicker, no API calls until you act).
+2. Either **sign up** (full name + username + college + email + password), or log in with a seeded account:
+   - Email `engineer1@example.com`, password `password123` (more demo users in `backend/db/seeds.rb`)
+3. Done — feed, peers, chat, leaderboard, notifications all work against your local Rails server.
+
+### Verify both servers are up
+
+```bash
+curl -s -o /dev/null -w "rails:%{http_code}\n" http://localhost:3000/api/v1/posts   # expect 401 (means API is up, you just need login)
+curl -s -o /dev/null -w "vite:%{http_code}\n" http://localhost:5173/                 # expect 200
+```
+
+### Optional
+
+```bash
+npx tsc -b     # Type-check
+npm run lint   # Lint
+npm run build  # Production bundle → dist/
+```
+
+**Backend notes:**
+- SQLite database + uploads live in `backend/storage/` (git-ignored — each clone starts fresh from seeds)
+- `ANTHROPIC_API_KEY` must be exported before starting Rails for AI chat to work (otherwise `/api/v1/ai_chat` returns 503)
+- First boot without `backend/config/master.key` falls back to `DEVISE_JWT_SECRET`; set one of them if auth misbehaves
 
 ---
 
 ## Deployment
 
-The app deploys to **Vercel** as a static SPA:
+The app ships as two pieces:
 
-1. Push to your Git repository
-2. Connect to Vercel, set env variables (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`)
-3. Build command: `npm run build` | Output directory: `dist`
-4. `vercel.json` handles the SPA rewrite so all paths serve `index.html`
+1. **Frontend** — static SPA: `npm run build` → `dist/`. Host anywhere static (Vercel, Netlify, nginx). `vercel.json` handles the SPA rewrite so all paths serve `index.html`. The app calls same-origin `/api/v1/*`, so configure the host to proxy `/api/*` to the Rails server.
+2. **Backend** — Rails 8.1 app in `backend/` (SQLite via ActiveStorage-local by default). Needs `SECRET_KEY_BASE` (or `DEVISE_JWT_SECRET`) and optionally `ANTHROPIC_API_KEY` in the environment.
 
 ---
 
@@ -537,4 +577,4 @@ These are instruction files (SKILL.md, README.md) and supporting scripts used by
 
 ---
 
-*Built with React 19 + Vite + TypeScript + Supabase. Deployed on Vercel.*
+*Built with React 19 + Vite + TypeScript + Ruby on Rails 8.1.*
