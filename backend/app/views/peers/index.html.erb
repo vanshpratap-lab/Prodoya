@@ -1,0 +1,25 @@
+<%= render "shared/navbar", active_tab: "peers" %>
+<div class="container">
+  <h2 style="margin-top: 0;">Mentors & Peers</h2>
+  <p class="muted">People in your network, ranked by engineering points.</p>
+
+  <% if @peers.any? %>
+    <div class="cards mt-4">
+      <% @peers.each do |peer| %>
+        <div class="card">
+          <div class="avatar"><%= peer.full_name[0].upcase %></div>
+          <h3><%= link_to peer.full_name, user_path(peer) %></h3>
+          <p><%= peer.role.presence || "Engineer" %> · <%= peer.college.presence || "—" %></p>
+          <div class="muted mb" style="margin-bottom:10px;"><%= peer.points %> pts</div>
+          <% if @connected_ids.include?(peer.id) %>
+            <%= button_to "Disconnect", disconnect_user_path(peer), method: :delete, class: "btn btn-sm" %>
+          <% else %>
+            <%= button_to "Connect", connect_user_path(peer), method: :post, class: "btn btn-primary btn-sm" %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="empty">No other engineers yet. Invite your friends!</div>
+  <% end %>
+</div>

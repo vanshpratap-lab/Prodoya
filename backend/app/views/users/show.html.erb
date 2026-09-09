@@ -1,0 +1,11 @@
+<%= render "shared/navbar", active_tab: "profile" %>
+<div class="container">
+  <%= render "shared/profile_card", user: @user, connection_count: @connection_count, current: (user_signed_in? && @user.id == current_user.id) %>
+
+  <h3>Posts</h3>
+  <% if @posts.any? %>
+    <%= render partial: "posts/post", collection: @posts %>
+  <% else %>
+    <div class="empty">No posts yet.</div>
+  <% end %>
+</div>

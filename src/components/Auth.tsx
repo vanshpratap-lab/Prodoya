@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, type FormEvent, type CSSProperties } from 'react';
 import { Loader2, Eye, EyeOff, ArrowRight, ArrowLeft, Mail, Lock } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { authApi } from '../lib/api';
 
 const COLLEGE_OPTIONS = [
   'MIT', 'Stanford University', 'IIT Delhi', 'IIT Madras', 'IIT Bombay',
@@ -38,6 +38,7 @@ export default function Auth() {
   const [mode, setMode] = useState<Mode>('login');
   const [step, setStep] = useState<Step>('start');
   const [fullName, setFullName] = useState('');
+  const [username, setUsername] = useState('');
   const [college, setCollege] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -49,10 +50,13 @@ export default function Auth() {
   const [submitting, setSubmitting] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<OAuthProvider | null>(null);
 
+  const { signIn, signUp } = authApi;
+
   const passwordRef = useRef<HTMLInputElement>(null);
   const confirmRef = useRef<HTMLInputElement>(null);
 
   const isEmailValid = validateEmail(email.trim());
+  const isUsernameValid = /^[a-zA-Z0-9_]{3,30}$/.test(username.trim());
   const isPasswordValid = password.length >= 8;
   const isConfirmValid = confirmPassword.length >= 8;
 
@@ -81,6 +85,10 @@ export default function Auth() {
       }
       if (mode === 'signup' && fullName.trim().length < 2) {
         setError('Enter your full name.');
+        return;
+      }
+      if (mode === 'signup' && !isUsernameValid) {
+        setError('Pick a username (3-30 chars, letters, numbers, _).');
         return;
       }
       setStep('password');
@@ -114,11 +122,11 @@ export default function Auth() {
     setSubmitting(true);
     resetMessages();
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
-        password,
-      });
-      if (signInError) throw signInError;
+      const { token } = await signIn(email.trim().toLowerCase(), password);
+      if (token) {
+        localStorage.setItem('auth_token', token);
+        window.location.reload();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Try again.');
     } finally {
@@ -141,18 +149,12 @@ export default function Auth() {
 
     setSubmitting(true);
     try {
-      const { error: signUpError } = await supabase.auth.signUp({
-        email: email.trim().toLowerCase(),
-        password,
-        options: {
-          data: {
-            full_name: fullName.trim(),
-            college: college.trim(),
-            role: 'Engineering Student',
-          },
-        },
-      });
-      if (signUpError) throw signUpError;
+      const { token } = await signUp(email.trim().toLowerCase(), password, fullName.trim(), college.trim(), username.trim());
+      if (token) {
+        localStorage.setItem('auth_token', token);
+        window.location.reload();
+        return;
+      }
       setInfo('Account created! Check your email to confirm, then log in.');
       switchMode('login');
     } catch (err) {
@@ -165,15 +167,9 @@ export default function Auth() {
   const handleOAuth = async (provider: OAuthProvider) => {
     resetMessages();
     setOauthLoading(provider);
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: window.location.origin },
-    });
-    if (oauthError) {
-      setError(oauthError.message);
-      setOauthLoading(null);
-    }
-    // On success the browser navigates away to the provider, so no further state change needed here.
+    await new Promise(resolve => setTimeout(resolve, 1200));
+    setError('OAuth authentication is not available yet.');
+    setOauthLoading(null);
   };
 
   return (
@@ -277,6 +273,23 @@ export default function Auth() {
                   onKeyDown={handleKeyDown}
                   placeholder="Ada Lovelace"
                   maxLength={80}
+                  style={inputStyle}
+                  className="auth-input"
+                />
+              </div>
+            )}
+
+            {step === 'start' && mode === 'signup' && (
+              <div className="auth-fade">
+                <label style={labelStyle}>Username</label>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={e => setUsername(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="ada_lovelace"
+                  maxLength={30}
+                  autoComplete="username"
                   style={inputStyle}
                   className="auth-input"
                 />

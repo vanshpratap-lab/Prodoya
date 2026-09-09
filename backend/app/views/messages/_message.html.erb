@@ -1,0 +1,7 @@
+<div class="message <%= message.user_id == current_user&.id ? "outgoing" : "incoming" %>">
+  <div class="sender">
+    <%= message.user.full_name %>
+    <% if message.user_id == current_user&.id %>(you)<% end %> · <%= time_ago_in_words(message.created_at) %> ago
+  </div>
+  <%= simple_format(h(message.body)) %>
+</div>

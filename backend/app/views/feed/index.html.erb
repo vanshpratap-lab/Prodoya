@@ -1,0 +1,25 @@
+<%= render "shared/navbar", active_tab: "feed" %>
+<div class="container">
+  <h2 style="margin-top: 0;">Home Feed</h2>
+
+  <div class="composer">
+    <%= form_with model: Post.new do |f| %>
+      <%= f.text_area :content, placeholder: "Share what you built today... (#{current_user.full_name})", rows: 2 %>
+      <div class="composer-bottom">
+        <div class="composer-meta">
+          <%= f.select :difficulty, [["Beginner", "beginner"], ["Intermediate", "intermediate"], ["Advanced", "advanced"]], {}, class: "select" %>
+        </div>
+        <%= f.submit "Share proof of work", class: "btn btn-primary" %>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @posts.any? %>
+    <%= render partial: "posts/post", collection: @posts %>
+  <% else %>
+    <div class="empty">
+      <p style="font-size:1.2rem; margin-bottom:4px;">No posts yet</p>
+      <p>Be the first to share your engineering work.</p>
+    </div>
+  <% end %>
+</div>

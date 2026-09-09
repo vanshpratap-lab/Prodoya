@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title><%= content_for(:title) || "Prodoya — Engineer Network" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      * { font-family: 'Inter', sans-serif; }
+      body { background: #f8f7f4; color: #111827; margin: 0; }
+      .flash-notice { background: #ecfdf5; color: #065f46; padding: 10px 16px; border-radius: 8px; margin-bottom: 16px; }
+      .flash-alert { background: #fef2f2; color: #991b1b; padding: 10px 16px; border-radius: 8px; margin-bottom: 16px; }
+    </style>
+  </head>
+  <body>
+    <% if notice.present? %><div class="flash-notice"><%= notice %></div><% end %>
+    <% if alert.present? %><div class="flash-alert"><%= alert %></div><% end %>
+    <%= yield %>
+  </body>
+</html>

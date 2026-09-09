@@ -33,7 +33,7 @@ export interface PeerTarget {
 }
 
 export default function App() {
-  const { session, user, profile, loading: authLoading, refreshProfile, signOut } = useAuth();
+  const { token, profile, loading: authLoading, refreshProfile, signOut } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'home' | 'network' | 'rank' | 'messages' | 'profile' | 'activity' | 'notifications' | 'ai'>('home');
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -43,7 +43,7 @@ export default function App() {
   const [typeMessage, setTypeMessage] = useState('');
   const [pendingPeer, setPendingPeer] = useState<PeerTarget | null>(null);
 
-  const userId = user?.id;
+  const userId = profile?.id;
   const { feedItems, createPost, toggleLike, toggleRepost, toggleSave, incrementCommentCount, deletePost, blockUser } = usePosts(userId);
   const { connections, toggleConnect, connectionCount } = useConnections(userId);
   const { chats, sendMessage, startDirectChat } = useCommunityChat(userId);
@@ -76,7 +76,7 @@ export default function App() {
     );
   }
 
-  if (!session || !user || !profile) {
+  if (!token || !profile) {
     return <Auth />;
   }
 
@@ -147,10 +147,10 @@ export default function App() {
   };
 
   // The signed-in user's own authored posts (original entries only, newest first).
-  const myPosts = feedPosts.filter(p => p.authorId === user.id && !p.repostedBy);
+  const myPosts = feedPosts.filter(p => p.authorId === profile.id && !p.repostedBy);
 
   const handleOpenProfile = (target: Profile) => {
-    if (target.id === user.id) {
+    if (target.id === profile.id) {
       setActiveTab('profile');
       return;
     }
@@ -179,7 +179,7 @@ export default function App() {
     setTypeMessage('');
   };
 
-  const myRankIndex = leaderboardRows.findIndex(r => r.id === user.id);
+  const myRankIndex = leaderboardRows.findIndex(r => r.id === profile.id);
 
   const profileStats = {
     connections: connectionCount,
