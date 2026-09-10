@@ -42,3 +42,28 @@ src/assets/hero.png
 src/assets/react.svg
 src/assets/vite.svg
 
+# Public avatar mock images
+public/avatar_mock_*.png
+
+# Large public images
+public/mountain_cover.jpg
+public/pull_shark.jpg
+public/yolo.jpg
+
+# Backend dependencies
+backend/vendor/bundle/
+
+# Backend logs
+backend/log/*.log
+
+# Backend storage (SQLite databases)
+backend/storage/*.sqlite3*
+
+# Backend tmp files
+backend/tmp/local_secret.txt
+backend/tmp/cache/
+backend/tmp/pids/
+backend/tmp/restart.txt
+backend/tmp/sockets/
+backend/tmp/storage/
+
